@@ -140,11 +140,16 @@ def run_cli():
         while True:
             # Update visual components
             state = "TALKING" if get_is_speaking() else "IDLE"
+            
+            # The get_frame methods already handle the randomization for blinking/mouth
+            avatar_frame = avatar.get_frame(state)
+            waveform_frame = waveform.get_frame(state)
+
             layout["sidebar"].update(
                 Panel(
-                    Text(avatar.get_frame(state), style="avatar.eyes") + 
+                    Text(avatar_frame, style="avatar.eyes") + 
                     Text("\n\n") + 
-                    Text(waveform.get_frame(state), style="waveform"),
+                    Text(waveform_frame, style="waveform"),
                     title="AI STATUS",
                     border_style="base"
                 )
