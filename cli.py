@@ -79,5 +79,37 @@ def make_layout() -> Layout:
     )
     return layout
 
+import threading
+try:
+    from speak import speak
+except ImportError:
+    def speak(text):
+        import time
+        time.sleep(2)
+
+is_speaking = False
+_speaking_lock = threading.Lock()
+
+def get_is_speaking():
+    global is_speaking
+    with _speaking_lock:
+        return is_speaking
+
+def set_is_speaking(value):
+    global is_speaking
+    with _speaking_lock:
+        is_speaking = value
+
+def _speak_task(text):
+    set_is_speaking(True)
+    try:
+        speak(text)
+    finally:
+        set_is_speaking(False)
+
+def speak_threaded(text):
+    thread = threading.Thread(target=_speak_task, args=(text,), daemon=True)
+    thread.start()
+
 if __name__ == "__main__":
     print("Core CLI Module. Import into main application.")
