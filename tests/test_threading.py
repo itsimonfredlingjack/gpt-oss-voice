@@ -31,9 +31,17 @@ def wait_for_condition(condition, timeout=2.0, interval=0.1):
         time.sleep(interval)
     raise TimeoutError("Condition not met within timeout")
 
+@pytest.fixture(autouse=True)
+def reset_speaking_state():
+    try:
+        from cli import set_is_speaking
+        set_is_speaking(False)
+    except ImportError:
+        pass
+
 def test_speak_threaded_updates_flag():
-    from cli import set_is_speaking, get_is_speaking
-    set_is_speaking(False)
+    from cli import get_is_speaking
+    # Initial state guaranteed by fixture
     assert not get_is_speaking()
     
     speak_threaded("Hello world")
