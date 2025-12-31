@@ -117,12 +117,10 @@ except ImportError:
     def ask_brain(prompt):
         return f"Mock reply to: {prompt}"
 
-from rich.live import Live
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.renderable import RenderableType
-import time
-
+    from rich.live import Live
+    from rich.console import Console
+    from rich.markdown import Markdown
+    import time
 def run_cli():
     console = Console(theme=SOLARIZED_THEME)
     layout = make_layout()
