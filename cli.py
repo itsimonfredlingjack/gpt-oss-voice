@@ -119,6 +119,8 @@ except ImportError:
 
 from rich.live import Live
 from rich.console import Console
+from rich.markdown import Markdown
+from rich.renderable import RenderableType
 import time
 
 def run_cli():
@@ -131,6 +133,7 @@ def run_cli():
     layout["header"].update(Panel(Text("DEV STATION", justify="center", style="header")))
     layout["footer"].update(Panel(Text("Modell: GPT-OSS | Output: Google Home", justify="center", style="base")))
     
+    # history will now store Renderable objects or raw text to be rendered
     history = []
 
     with Live(layout, console=console, refresh_per_second=10) as live:
@@ -147,9 +150,19 @@ def run_cli():
                 )
             )
             
-            # Simple Log rendering (full Markdown rendering comes in Phase 3)
-            log_content = "\n".join(history[-10:])
-            layout["log"].update(Panel(Text(log_content, style="base"), title="STATION LOG", border_style="base"))
+            # Render history log
+            log_group = []
+            for item in history[-10:]:
+                if item.startswith("User: "):
+                    log_group.append(Text(item, style="user_input"))
+                elif item.startswith("AI: "):
+                    # Strip the "AI: " prefix for cleaner markdown rendering
+                    ai_text = item[4:]
+                    log_group.append(Text("AI:", style="info"))
+                    log_group.append(Markdown(ai_text))
+            
+            from rich.console import Group
+            layout["log"].update(Panel(Group(*log_group), title="STATION LOG", border_style="base"))
 
             live.refresh()
             
