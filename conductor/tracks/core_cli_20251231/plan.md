@@ -13,7 +13,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Layout & Concurrency' (Protocol in workflow.md) 979baa4
 
 ## Phase 3: Polish & Integration
-- [ ] Task: Implement Markdown rendering for AI responses in the history log
+- [x] Task: Implement Markdown rendering for AI responses in the history log f2742b2
 - [ ] Task: Add blinking and mouth animation logic to the `Live` update loop
 - [ ] Task: Final integration testing with `brain.py` and `speak.py`
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Polish & Integration' (Protocol in workflow.md)
