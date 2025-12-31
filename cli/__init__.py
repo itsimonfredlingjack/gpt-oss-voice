@@ -1,23 +1,17 @@
-"""CLI entry point and backward-compatible exports.
+"""CLI package for The Core terminal interface.
 
-This file provides the main entry point for the CLI application
-and maintains backward compatibility with existing tests and imports.
-
-    ◢◤ THE CORE ◥◣
-    Cyberpunk AI Terminal Interface
+This package provides a cyberpunk-themed terminal UI for the AI assistant.
 """
 
 import queue
 import threading
 import time
 
-# --- New modular imports ---
 from cli.state import AppState, StateManager, get_state_manager
 from cli.theme import CYBERPUNK_THEME, COLORS
 from cli.avatar import AIAvatar
 from cli.waveform import Waveform
 from cli.layout import make_layout
-from cli.app import CLIApp, run_cli
 
 # --- Legacy theme alias ---
 SOLARIZED_THEME = CYBERPUNK_THEME
@@ -55,12 +49,6 @@ except ImportError:
     def speak(text: str) -> None:
         time.sleep(2)
 
-try:
-    from brain import ask_brain
-except ImportError:
-    def ask_brain(prompt: str) -> str:
-        return f"Mock reply to: {prompt}"
-
 
 def _speak_task(text: str) -> None:
     """Background speak task (legacy)."""
@@ -78,6 +66,23 @@ def speak_threaded(text: str) -> None:
     thread.start()
 
 
-# --- Main entry point ---
-if __name__ == "__main__":
-    run_cli()
+__all__ = [
+    # New exports
+    'AppState',
+    'StateManager',
+    'get_state_manager',
+    'CYBERPUNK_THEME',
+    'COLORS',
+    'AIAvatar',
+    'Waveform',
+    'make_layout',
+    # Legacy exports
+    'SOLARIZED_THEME',
+    'APP_STATE',
+    'response_queue',
+    'is_speaking',
+    'get_is_speaking',
+    'set_is_speaking',
+    'set_app_state',
+    'speak_threaded',
+]
