@@ -61,5 +61,23 @@ class Waveform:
             return "".join(random.choice(self.blocks) for _ in range(self.width))
         return " " * self.width
 
+from rich.layout import Layout
+from rich.panel import Panel
+from rich.text import Text
+
+def make_layout() -> Layout:
+    layout = Layout(name="root")
+
+    layout.split(
+        Layout(name="header", size=3),
+        Layout(name="main"),
+        Layout(name="footer", size=3),
+    )
+    layout["main"].split_row(
+        Layout(name="sidebar", size=25),
+        Layout(name="log"),
+    )
+    return layout
+
 if __name__ == "__main__":
     print("Core CLI Module. Import into main application.")
