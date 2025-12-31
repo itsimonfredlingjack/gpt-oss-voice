@@ -183,7 +183,7 @@ def run_cli():
             log_group = []
             for item in history[-10:]:
                 if item.startswith("User: "):
-                    log_group.append(Text(item, style="user_input")
+                    log_group.append(Text(item, style="user_input"))
                 elif item.startswith("AI: "):
                     ai_text = item[4:]
                     log_group.append(Text("AI:", style="info"))
