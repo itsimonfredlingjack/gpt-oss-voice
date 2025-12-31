@@ -7,7 +7,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Theme' (Protocol in workflow.md) 78edd06
 
 ## Phase 2: Layout & Concurrency
-- [ ] Task: Implement the `Rich` layout (Header, Sidebar, Log, Footer)
+- [x] Task: Implement the `Rich` layout (Header, Sidebar, Log, Footer) 68f010b
 - [ ] Task: Implement the background threading logic for `speak()` using a global `is_speaking` flag
 - [ ] Task: Integrate the interactive loop (Input -> Brain -> Speak)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Layout & Concurrency' (Protocol in workflow.md)
