@@ -1,11 +1,10 @@
 import requests
 import json
 import sys
-from speak import speak 
 
 # --- KONFIGURATION ---
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL_NAME = "gptoss-agent" 
+MODEL_NAME = "gptoss-agent"
 
 def ask_brain(prompt):
     print(f"🧠  Skickar tanke till {MODEL_NAME}: '{prompt}'")
@@ -47,26 +46,22 @@ def ask_brain(prompt):
         
         if not ai_reply:
             print("⚠️  Varning: Modellen svarade tomt! (Kolla om den 'tänker' utan att prata)")
-            # Ibland kan modeller fastna i thought-loops, vi tvingar fram ett ljud:
-            speak("Jag hörde dig, men min tankeprocess returnerade ingen data.")
-            return
+            return "Jag hörde dig, men min tankeprocess returnerade ingen data."
 
         print(f"🤖 AI Svar: {ai_reply}")
-        
-        # Prata!
-        speak(ai_reply)
+        return ai_reply
 
     except Exception as e:
         print(f"🔥 KRASCH: {e}")
-        speak("Systemfel i neurala nätverket.")
+        return "Systemfel i neurala nätverket."
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         user_input = " ".join(sys.argv[1:])
-        ask_brain(user_input)
+        print(ask_brain(user_input))
     else:
         print("--- INTERAKTIVT LÄGE (Skriv 'exit' för att sluta) ---")
-        speak("Kanalen är öppen. Vad vill du?")
+        print("Kanalen är öppen. Vad vill du?")
         while True:
             try:
                 user_input = input("Du: ")
@@ -74,7 +69,8 @@ if __name__ == "__main__":
                     break
                 if user_input.strip() == "":
                     continue
-                ask_brain(user_input)
+                reply = ask_brain(user_input)
+                print(f"AI: {reply}")
             except KeyboardInterrupt:
                 print("\nStänger ner.")
                 break
