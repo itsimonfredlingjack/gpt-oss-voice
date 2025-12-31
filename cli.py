@@ -111,5 +111,76 @@ def speak_threaded(text):
     thread = threading.Thread(target=_speak_task, args=(text,), daemon=True)
     thread.start()
 
+try:
+    from brain import ask_brain
+except ImportError:
+    def ask_brain(prompt):
+        return f"Mock reply to: {prompt}"
+
+from rich.live import Live
+from rich.console import Console
+import time
+
+def run_cli():
+    console = Console(theme=SOLARIZED_THEME)
+    layout = make_layout()
+    avatar = AIAvatar()
+    waveform = Waveform()
+    
+    # Placeholders for Header and Footer
+    layout["header"].update(Panel(Text("DEV STATION", justify="center", style="header")))
+    layout["footer"].update(Panel(Text("Modell: GPT-OSS | Output: Google Home", justify="center", style="base")))
+    
+    history = []
+
+    with Live(layout, console=console, refresh_per_second=10) as live:
+        while True:
+            # Update visual components
+            state = "TALKING" if get_is_speaking() else "IDLE"
+            layout["sidebar"].update(
+                Panel(
+                    Text(avatar.get_frame(state), style="avatar.eyes") + 
+                    Text("\n\n") + 
+                    Text(waveform.get_frame(state), style="waveform"),
+                    title="AI STATUS",
+                    border_style="base"
+                )
+            )
+            
+            # Simple Log rendering (full Markdown rendering comes in Phase 3)
+            log_content = "\n".join(history[-10:])
+            layout["log"].update(Panel(Text(log_content, style="base"), title="STATION LOG", border_style="base"))
+
+            live.refresh()
+            
+            # Non-blocking input is tricky in standard terminal without curses/prompt_toolkit
+            # The spec says: "Ta input från användaren (animationen kan pausa här, det är ok)"
+            # So we exit the Live context to take input, or use a separate thread for input.
+            # Let's follow the spec: "animationen kan pausa här, det är ok"
+            
+            # To take input while Live is running, we can stop Live temporarily
+            live.stop()
+            try:
+                user_input = console.input("[user_input]User > [/user_input]")
+            except EOFError:
+                break
+            if user_input.lower() in ["exit", "quit"]:
+                break
+            
+            history.append(f"User: {user_input}")
+            
+            # Thinking state
+            layout["log"].update(Panel(Text(log_content + f"\nUser: {user_input}\nThinking...", style="base"), title="STATION LOG", border_style="base"))
+            live.start()
+            
+            response = ask_brain(user_input)
+            history.append(f"AI: {response}")
+            
+            # Start speaking
+            speak_threaded(response)
+            
+            # Continue loop to animate TALKING state
+
 if __name__ == "__main__":
+    run_cli()
     print("Core CLI Module. Import into main application.")
