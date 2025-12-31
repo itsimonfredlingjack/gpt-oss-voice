@@ -47,5 +47,19 @@ class AIAvatar:
         )
         return frame
 
+class Waveform:
+    def __init__(self):
+        self.blocks = [" ", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+        self.width = 30 # Default width
+
+    def get_frame(self, state):
+        if state == "IDLE":
+            # Return a flat line
+            return " " * self.width
+        elif state == "TALKING":
+            # Generate random waveform
+            return "".join(random.choice(self.blocks) for _ in range(self.width))
+        return " " * self.width
+
 if __name__ == "__main__":
     print("Core CLI Module. Import into main application.")
