@@ -9,7 +9,7 @@
 ## Phase 2: Layout & Concurrency
 - [x] Task: Implement the `Rich` layout (Header, Sidebar, Log, Footer) 68f010b
 - [x] Task: Implement the background threading logic for `speak()` using a global `is_speaking` flag 4c7938d
-- [ ] Task: Integrate the interactive loop (Input -> Brain -> Speak)
+- [x] Task: Integrate the interactive loop (Input -> Brain -> Speak) 1033e01
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Layout & Concurrency' (Protocol in workflow.md)
 
 ## Phase 3: Polish & Integration
