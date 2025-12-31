@@ -8,7 +8,7 @@
 ## Phase 2: Decoupling & State Machine
 - [x] Task: Refactor `brain.py` to return text string instead of calling `speak` 2189195
 - [x] Task: Implement `APP_STATE` State Machine in `cli.py` (IDLE, THINKING, TALKING) 0a7ccca
-- [ ] Task: Implement `AIAvatar` "Thinking" state frame
+- [x] Task: Implement `AIAvatar` "Thinking" state frame e69cebc
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Decoupling & State Machine' (Protocol in workflow.md)
 
 ## Phase 3: Concurrency Implementation
