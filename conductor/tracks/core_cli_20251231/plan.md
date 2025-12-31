@@ -1,10 +1,10 @@
 # Plan: Implement the Core CLI Application
 
-## Phase 1: Foundation & Theme
+## Phase 1: Foundation & Theme [checkpoint: 78edd06]
 - [x] Task: Create `cli.py` and implement the `Rich` theme for Solarized Light 4b090c7
 - [x] Task: Define the `AIAvatar` class with ASCII art and state management (IDLE/TALKING) f1f0d6a
 - [x] Task: Define the `Waveform` class with block-character animation logic 4b1c97a
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Theme' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Theme' (Protocol in workflow.md) 78edd06
 
 ## Phase 2: Layout & Concurrency
 - [ ] Task: Implement the `Rich` layout (Header, Sidebar, Log, Footer)
