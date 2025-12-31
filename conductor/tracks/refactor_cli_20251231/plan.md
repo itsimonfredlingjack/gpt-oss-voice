@@ -2,7 +2,7 @@
 
 ## Phase 1: Foundation & Test Reliability
 - [x] Task: Refactor `tests/test_threading.py` to use polling assertions instead of hardcoded sleeps 842247d
-- [ ] Task: Implement `set_is_speaking(False)` in test setup to prevent state pollution
+- [x] Task: Implement `set_is_speaking(False)` in test setup to prevent state pollution 842247d
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Test Reliability' (Protocol in workflow.md)
 
 ## Phase 2: Decoupling & State Machine
