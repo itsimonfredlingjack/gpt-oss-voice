@@ -188,14 +188,16 @@ def run_cli():
             history.append(f"User: {user_input}")
             
             # Thinking state
-            layout["log"].update(Panel(Text(log_content + f"\nUser: {user_input}\nThinking...", style="base"), title="STATION LOG", border_style="base"))
+            layout["log"].update(Panel(Group(*log_group, Text(f"\nUser: {user_input}", style="user_input"), Text("Thinking...", style="info")), title="STATION LOG", border_style="base"))
             live.start()
             
-            response = ask_brain(user_input)
-            history.append(f"AI: {response}")
-            
-            # Start speaking
-            speak_threaded(response)
+            try:
+                response = ask_brain(user_input)
+                history.append(f"AI: {response}")
+                # Start speaking
+                speak_threaded(response)
+            except Exception as e:
+                history.append(f"AI: Error connecting to brain or speaker: {str(e)}")
             
             # Continue loop to animate TALKING state
 
