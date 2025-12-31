@@ -2,7 +2,7 @@
 
 ## Phase 1: Foundation & Theme
 - [x] Task: Create `cli.py` and implement the `Rich` theme for Solarized Light 4b090c7
-- [ ] Task: Define the `AIAvatar` class with ASCII art and state management (IDLE/TALKING)
+- [x] Task: Define the `AIAvatar` class with ASCII art and state management (IDLE/TALKING) f1f0d6a
 - [ ] Task: Define the `Waveform` class with block-character animation logic
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Theme' (Protocol in workflow.md)
 
