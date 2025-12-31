@@ -1,4 +1,15 @@
 from rich.theme import Theme
+from rich.layout import Layout
+from rich.panel import Panel
+from rich.text import Text
+from rich.live import Live
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.console import Group
+import random
+import threading
+import queue
+import time
 
 # Solarized Light Palette
 SOLARIZED_THEME = Theme({
@@ -14,7 +25,13 @@ SOLARIZED_THEME = Theme({
     "user_input": "#cb4b16",
 })
 
-import random
+# --- STATE MACHINE DEFINITIONS ---
+APP_STATE = "IDLE"  # Options: IDLE, THINKING, TALKING
+response_queue = queue.Queue()
+
+def set_app_state(new_state):
+    global APP_STATE
+    APP_STATE = new_state
 
 class AIAvatar:
     def __init__(self):
@@ -29,6 +46,14 @@ class AIAvatar:
             if random.random() < self.blink_rate:
                 eyes = "-   -"  # Blink
         
+        # THINKING: Eyes looking up
+        elif state == "THINKING":
+            eyes = "O   O"
+            mouth = "  o  " # Small mouth
+            # Maybe shift eyes or something simple
+            if random.random() < 0.5:
+                 eyes = "o   o" # Squint?
+
         # TALKING: Mouth movement
         elif state == "TALKING":
             mouth_variants = ["  o  ", "  O  ", " --- ", "  -  "]
@@ -38,7 +63,6 @@ class AIAvatar:
                 eyes = "-   -"
 
         # ASCII Art Construction
-        # Using box drawing chars as per guidelines
         frame = (
             f" ┌───────────────┐ \n"
             f" │    {eyes}    │ \n"
@@ -53,17 +77,10 @@ class Waveform:
         self.width = 30 # Default width
 
     def get_frame(self, state):
-        if state == "IDLE":
-            # Return a flat line
-            return " " * self.width
-        elif state == "TALKING":
+        if state == "TALKING":
             # Generate random waveform
             return "".join(random.choice(self.blocks) for _ in range(self.width))
         return " " * self.width
-
-from rich.layout import Layout
-from rich.panel import Panel
-from rich.text import Text
 
 def make_layout() -> Layout:
     layout = Layout(name="root")
@@ -79,13 +96,18 @@ def make_layout() -> Layout:
     )
     return layout
 
-import threading
+# --- AUDIO & BRAIN INTEGRATION ---
 try:
     from speak import speak
 except ImportError:
     def speak(text):
-        import time
         time.sleep(2)
+
+try:
+    from brain import ask_brain
+except ImportError:
+    def ask_brain(prompt):
+        return f"Mock reply to: {prompt}"
 
 is_speaking = False
 _speaking_lock = threading.Lock()
@@ -101,26 +123,25 @@ def set_is_speaking(value):
         is_speaking = value
 
 def _speak_task(text):
-    set_is_speaking(True)
+    # Flag is set by caller (speak_threaded) to avoid race condition
     try:
         speak(text)
     finally:
         set_is_speaking(False)
+        set_app_state("IDLE") # Return to IDLE after speaking
 
 def speak_threaded(text):
+    set_is_speaking(True) # Set immediately
     thread = threading.Thread(target=_speak_task, args=(text,), daemon=True)
     thread.start()
 
-try:
-    from brain import ask_brain
-except ImportError:
-    def ask_brain(prompt):
-        return f"Mock reply to: {prompt}"
+def _brain_task(prompt):
+    try:
+        response = ask_brain(prompt)
+        response_queue.put(response)
+    except Exception as e:
+        response_queue.put(f"Error: {e}")
 
-    from rich.live import Live
-    from rich.console import Console
-    from rich.markdown import Markdown
-    import time
 def run_cli():
     console = Console(theme=SOLARIZED_THEME)
     layout = make_layout()
@@ -131,24 +152,29 @@ def run_cli():
     layout["header"].update(Panel(Text("DEV STATION", justify="center", style="header")))
     layout["footer"].update(Panel(Text("Modell: GPT-OSS | Output: Google Home", justify="center", style="base")))
     
-    # history will now store Renderable objects or raw text to be rendered
     history = []
 
     with Live(layout, console=console, refresh_per_second=10) as live:
         while True:
-            # Update visual components
-            state = "TALKING" if get_is_speaking() else "IDLE"
-            
-            # The get_frame methods already handle the randomization for blinking/mouth
-            avatar_frame = avatar.get_frame(state)
-            waveform_frame = waveform.get_frame(state)
+            # Check for AI response
+            try:
+                ai_text = response_queue.get_nowait()
+                history.append(f"AI: {ai_text}")
+                set_app_state("TALKING")
+                speak_threaded(ai_text)
+            except queue.Empty:
+                pass
+
+            # Update visual components based on APP_STATE
+            avatar_frame = avatar.get_frame(APP_STATE)
+            waveform_frame = waveform.get_frame(APP_STATE)
 
             layout["sidebar"].update(
                 Panel(
                     Text(avatar_frame, style="avatar.eyes") + 
                     Text("\n\n") + 
                     Text(waveform_frame, style="waveform"),
-                    title="AI STATUS",
+                    title=f"AI STATUS: {APP_STATE}",
                     border_style="base"
                 )
             )
@@ -157,48 +183,48 @@ def run_cli():
             log_group = []
             for item in history[-10:]:
                 if item.startswith("User: "):
-                    log_group.append(Text(item, style="user_input"))
+                    log_group.append(Text(item, style="user_input")
                 elif item.startswith("AI: "):
-                    # Strip the "AI: " prefix for cleaner markdown rendering
                     ai_text = item[4:]
                     log_group.append(Text("AI:", style="info"))
                     log_group.append(Markdown(ai_text))
             
-            from rich.console import Group
+            # Add thinking indicator
+            if APP_STATE == "THINKING":
+                log_group.append(Text("Thinking...", style="info"))
+
             layout["log"].update(Panel(Group(*log_group), title="STATION LOG", border_style="base"))
 
             live.refresh()
             
-            # Non-blocking input is tricky in standard terminal without curses/prompt_toolkit
-            # The spec says: "Ta input från användaren (animationen kan pausa här, det är ok)"
-            # So we exit the Live context to take input, or use a separate thread for input.
-            # Let's follow the spec: "animationen kan pausa här, det är ok"
-            
-            # To take input while Live is running, we can stop Live temporarily
-            live.stop()
-            try:
-                user_input = console.input("[user_input]User > [/user_input]")
-            except EOFError:
-                break
-            if user_input.lower() in ["exit", "quit"]:
-                break
-            
-            history.append(f"User: {user_input}")
-            
-            # Thinking state
-            layout["log"].update(Panel(Group(*log_group, Text(f"\nUser: {user_input}", style="user_input"), Text("Thinking...", style="info")), title="STATION LOG", border_style="base"))
-            live.start()
-            
-            try:
-                response = ask_brain(user_input)
-                history.append(f"AI: {response}")
-                # Start speaking
-                speak_threaded(response)
-            except Exception as e:
-                history.append(f"AI: Error connecting to brain or speaker: {str(e)}")
-            
-            # Continue loop to animate TALKING state
+            # Input handling - ONLY when IDLE
+            if APP_STATE == "IDLE":
+                # We need to peek if user wants to type, but standard input() is blocking.
+                # To make it truly non-blocking without robust input libs is hard.
+                # BUT, we can pause animation to take input as agreed in spec.
+                # However, the loop must continue to update animations if we are NOT idle.
+                # Since we are in IDLE block, we can block here for input.
+                
+                # Check if we should prompt
+                # NOTE: This implementation effectively pauses the IDLE animation (blinking)
+                # while waiting for input. This is a known trade-off.
+                # To fix this properly requires async input or threads for input.
+                # For this Hack, we will accept that IDLE animation stops while waiting for user.
+                
+                live.stop()
+                try:
+                    user_input = console.input("[user_input]User > [/user_input]")
+                    if user_input.lower() in ["exit", "quit"]:
+                        break
+                    if user_input.strip():
+                        history.append(f"User: {user_input}")
+                        set_app_state("THINKING")
+                        # Spawn brain thread
+                        threading.Thread(target=_brain_task, args=(user_input,), daemon=True).start()
+                except EOFError:
+                    break
+                finally:
+                    live.start()
 
 if __name__ == "__main__":
     run_cli()
-    print("Core CLI Module. Import into main application.")
