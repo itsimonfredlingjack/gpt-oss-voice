@@ -6,7 +6,7 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Test Reliability' (Protocol in workflow.md)
 
 ## Phase 2: Decoupling & State Machine
-- [ ] Task: Refactor `brain.py` to return text string instead of calling `speak`
+- [x] Task: Refactor `brain.py` to return text string instead of calling `speak` 2189195
 - [ ] Task: Implement `APP_STATE` State Machine in `cli.py` (IDLE, THINKING, TALKING)
 - [ ] Task: Implement `AIAvatar` "Thinking" state frame
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Decoupling & State Machine' (Protocol in workflow.md)
