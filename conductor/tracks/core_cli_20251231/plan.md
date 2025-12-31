@@ -15,5 +15,5 @@
 ## Phase 3: Polish & Integration
 - [x] Task: Implement Markdown rendering for AI responses in the history log f2742b2
 - [x] Task: Add blinking and mouth animation logic to the `Live` update loop 546629a
-- [ ] Task: Final integration testing with `brain.py` and `speak.py`
+- [x] Task: Final integration testing with `brain.py` and `speak.py` a4d6c46
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Polish & Integration' (Protocol in workflow.md)
