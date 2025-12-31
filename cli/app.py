@@ -199,7 +199,7 @@ class CLIApp:
                 live.refresh()
 
     def _process_state(self) -> None:
-        """Process current state logic."""
+        """Process current state logic with UX feedback."""
         current = self.state.state
 
         if current == AppState.IDLE:
@@ -213,6 +213,14 @@ class CLIApp:
         elif current == AppState.TALKING:
             self.input_handler.disable_input()
             self.show_prompt = False
+
+        elif current == AppState.ERROR:
+            # Allow input to dismiss error
+            self.input_handler.enable_input()
+            self.show_prompt = False
+            # Auto-recover after 5 seconds
+            if self.state.duration > 5.0:
+                self.state.force_state(AppState.IDLE)
 
     def _process_input(self) -> None:
         """Process input events from handler."""
@@ -233,7 +241,11 @@ class CLIApp:
                 self.running = False
 
         elif event.type == InputEventType.TEXT:
-            self._handle_user_input(event.text)
+            # In ERROR state, any input recovers to IDLE
+            if self.state.state == AppState.ERROR:
+                self.state.force_state(AppState.IDLE)
+            else:
+                self._handle_user_input(event.text)
 
     def _handle_user_input(self, text: str) -> None:
         """Handle user text input.
@@ -266,7 +278,9 @@ class CLIApp:
             response = ask_brain(prompt)
             self.response_queue.put(response)
         except Exception as e:
-            self.response_queue.put(f"Neural error: {e}")
+            # Signal error state with UX-friendly message
+            error_msg = str(e)[:50] if str(e) else "Connection failed"
+            self.state.set_error(f"Neural link error: {error_msg}")
 
     def _process_responses(self) -> None:
         """Check for and process AI responses."""
@@ -323,19 +337,25 @@ class CLIApp:
 
         self.layout["header"].update(header)
 
-        # Footer
-        status = ""
+        # Footer with UX-friendly status
+        status = self.state.status_message
+        hint = self.state.hint
+
+        # Add duration indicator for THINKING state
         if state_name == "THINKING":
+            duration = int(self.state.duration)
             dots = "●" * ((self._frame_count // 5) % 4)
-            status = f"PROCESSING{dots}"
-        elif state_name == "TALKING":
-            status = "◈ TRANSMITTING ◈"
+            status = f"◇ PROCESSING {duration}s {dots}"
+        elif state_name == "ERROR":
+            error_msg = self.state.last_error or "Unknown error"
+            status = f"✗ {error_msg[:30]}"
 
         self.layout["footer"].update(
             make_footer(
                 model=self.config.model_name,
                 output=self.config.output_device,
-                status=status
+                status=status,
+                hint=hint
             )
         )
 

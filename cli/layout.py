@@ -79,29 +79,46 @@ def make_header(title: str = 'THE CORE', subtitle: str = '') -> Panel:
 def make_footer(
     model: str = 'GPT-OSS',
     output: str = 'Google Home',
-    status: str = ''
+    status: str = '',
+    hint: str = ''
 ) -> Panel:
-    """Create styled footer panel.
+    """Create styled footer panel with status and user hints.
 
     Args:
         model: AI model name.
         output: Audio output device.
-        status: Optional status message.
+        status: Status message (state-based).
+        hint: User guidance text.
 
     Returns:
         Styled Panel for footer.
     """
-    text = Text()
-    text.append('▸ MODEL: ', style='dim')
-    text.append(model, style='info')
-    text.append('  ▸ OUTPUT: ', style='dim')
-    text.append(output, style='success')
+    from rich.console import Group
+    from rich.align import Align
+
+    # Status line
+    status_text = Text()
+    status_text.append('▸ MODEL: ', style='dim')
+    status_text.append(model, style='info')
+    status_text.append('  ▸ OUTPUT: ', style='dim')
+    status_text.append(output, style='success')
 
     if status:
-        text.append(f'  ▸ {status}', style='warning')
+        # Error status gets danger style
+        style = 'danger' if '✗' in status else 'warning'
+        status_text.append(f'  ▸ {status}', style=style)
+
+    # Hint line (user affordance)
+    if hint:
+        hint_text = Text()
+        hint_text.append('◇ ', style='dim')
+        hint_text.append(hint, style='dim italic')
+        content = Group(status_text, Align.center(hint_text))
+    else:
+        content = status_text
 
     return Panel(
-        text,
+        content,
         box=HEAVY,
         style='border.dim',
         padding=(0, 1),
@@ -131,6 +148,7 @@ def make_sidebar_panel(
         'IDLE': 'status.idle',
         'THINKING': 'status.thinking',
         'TALKING': 'status.talking',
+        'ERROR': 'danger',
     }
     status_style = status_styles.get(state, 'dim')
 

@@ -16,6 +16,24 @@ class AppState(Enum):
     IDLE = auto()
     THINKING = auto()
     TALKING = auto()
+    ERROR = auto()
+
+
+# UX-friendly messages for each state
+STATE_MESSAGES = {
+    AppState.IDLE: "◈ NEURAL LINK READY",
+    AppState.THINKING: "◇ PROCESSING QUERY",
+    AppState.TALKING: "◆ TRANSMITTING RESPONSE",
+    AppState.ERROR: "✗ SIGNAL INTERRUPTED",
+}
+
+# Hints shown to user in each state
+STATE_HINTS = {
+    AppState.IDLE: "Type your message or /help for commands",
+    AppState.THINKING: "Analyzing neural pathways...",
+    AppState.TALKING: "Press Ctrl+C to skip",
+    AppState.ERROR: "Press Enter to retry",
+}
 
 
 @dataclass
@@ -42,8 +60,9 @@ class StateManager:
 
     VALID_TRANSITIONS = {
         AppState.IDLE: {AppState.THINKING},
-        AppState.THINKING: {AppState.TALKING, AppState.IDLE},
-        AppState.TALKING: {AppState.IDLE},
+        AppState.THINKING: {AppState.TALKING, AppState.IDLE, AppState.ERROR},
+        AppState.TALKING: {AppState.IDLE, AppState.ERROR},
+        AppState.ERROR: {AppState.IDLE},
     }
 
     def __init__(self):
@@ -52,6 +71,8 @@ class StateManager:
         self._lock: RLock = RLock()
         self._observers: list[Callable[[AppState, AppState], None]] = []
         self._history: list[StateTransition] = []
+        self._state_entered_at: float = time.time()
+        self._last_error: Optional[str] = None
 
     @property
     def state(self) -> AppState:
@@ -64,6 +85,43 @@ class StateManager:
         """Get current state name as string."""
         with self._lock:
             return self._state.name
+
+    @property
+    def status_message(self) -> str:
+        """Get UX-friendly status message for current state."""
+        with self._lock:
+            return STATE_MESSAGES.get(self._state, "◇ UNKNOWN STATE")
+
+    @property
+    def hint(self) -> str:
+        """Get user guidance hint for current state."""
+        with self._lock:
+            return STATE_HINTS.get(self._state, "")
+
+    @property
+    def duration(self) -> float:
+        """Seconds spent in current state."""
+        with self._lock:
+            return time.time() - self._state_entered_at
+
+    @property
+    def last_error(self) -> Optional[str]:
+        """Get last error message if in ERROR state."""
+        with self._lock:
+            return self._last_error
+
+    def set_error(self, message: str) -> bool:
+        """Transition to ERROR state with message.
+
+        Args:
+            message: Error description to display.
+
+        Returns:
+            True if transition succeeded.
+        """
+        with self._lock:
+            self._last_error = message
+            return self.transition_to(AppState.ERROR)
 
     def transition_to(self, new_state: AppState) -> bool:
         """Atomically transition to new state if valid.
@@ -78,6 +136,10 @@ class StateManager:
             if new_state in self.VALID_TRANSITIONS.get(self._state, set()):
                 old_state = self._state
                 self._state = new_state
+                self._state_entered_at = time.time()
+                # Clear error when leaving ERROR state
+                if old_state == AppState.ERROR:
+                    self._last_error = None
                 self._history.append(
                     StateTransition(old_state, new_state, time.time())
                 )

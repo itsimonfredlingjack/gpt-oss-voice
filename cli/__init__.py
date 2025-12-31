@@ -7,7 +7,13 @@ import queue
 import threading
 import time
 
-from cli.state import AppState, StateManager, get_state_manager
+from cli.state import (
+    AppState,
+    StateManager,
+    get_state_manager,
+    STATE_MESSAGES,
+    STATE_HINTS,
+)
 from cli.theme import CYBERPUNK_THEME, COLORS
 from cli.avatar import AIAvatar
 from cli.waveform import Waveform
