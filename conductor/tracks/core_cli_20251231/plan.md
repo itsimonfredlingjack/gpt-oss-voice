@@ -6,11 +6,11 @@
 - [x] Task: Define the `Waveform` class with block-character animation logic 4b1c97a
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Theme' (Protocol in workflow.md) 78edd06
 
-## Phase 2: Layout & Concurrency
+## Phase 2: Layout & Concurrency [checkpoint: 979baa4]
 - [x] Task: Implement the `Rich` layout (Header, Sidebar, Log, Footer) 68f010b
 - [x] Task: Implement the background threading logic for `speak()` using a global `is_speaking` flag 4c7938d
 - [x] Task: Integrate the interactive loop (Input -> Brain -> Speak) 1033e01
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Layout & Concurrency' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Layout & Concurrency' (Protocol in workflow.md) 979baa4
 
 ## Phase 3: Polish & Integration
 - [ ] Task: Implement Markdown rendering for AI responses in the history log
