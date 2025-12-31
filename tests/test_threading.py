@@ -24,8 +24,8 @@ def test_threading_logic_exists():
         pytest.fail("speak_threaded function not found in cli.py")
 
 def wait_for_condition(condition, timeout=2.0, interval=0.1):
-    start_time = time.time()
-    while time.time() - start_time < timeout:
+    start_time = time.monotonic()
+    while time.monotonic() - start_time < timeout:
         if condition():
             return
         time.sleep(interval)
@@ -46,13 +46,8 @@ def test_speak_threaded_updates_flag():
     
     speak_threaded("Hello world")
     
-    # Flag should be true immediately after starting thread
-    # We might need a tiny sleep or just assert, depending on how fast the thread starts.
-    # But since we want to fix the race condition in the NEXT task, for now we just verify it eventually becomes true.
-    # Actually, the spec says "Refactor speak_threaded to set flag immediately". 
-    # But this task is just about fixing the TEST.
-    # So let's use wait_for_condition to be robust.
-    
+    # Flag should eventually become true. 
+    # Using wait_for_condition handles the race where the thread hasn't started yet.
     wait_for_condition(lambda: get_is_speaking())
     assert get_is_speaking()
     
