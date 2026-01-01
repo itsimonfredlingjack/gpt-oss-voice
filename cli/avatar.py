@@ -1,7 +1,7 @@
-"""AI Avatar with cyberpunk ASCII art and state-based animations.
+"""Spherical Braille AI Avatar with organic animations.
 
-Provides a multi-component avatar that can display different
-expressions based on the application state.
+Provides a geodesic, circular avatar using high-res Braille patterns
+that breathes, rotates, and pulses based on application state.
 """
 
 from dataclasses import dataclass
@@ -11,236 +11,248 @@ import random
 import math
 
 
-@dataclass
-class AvatarComponent:
-    """A single line of the avatar with its style."""
-    content: str
-    style: str
+class BrailleAvatar:
+    """Organic spherical avatar using Braille patterns.
 
-
-class AIAvatar:
-    """Cyberpunk AI avatar with expressive animations.
-
-    The avatar displays different expressions based on state:
-    - IDLE: Calm, occasional blinking, ambient glow
-    - THINKING: Eyes scanning, neural activity indicator
-    - TALKING: Mouth animating, sound waves emanating
+    The avatar displays different organic animations based on state:
+    - IDLE: Subtle breathing rotation with density shifts
+    - THINKING: Faster rotation with vertical data streams
+    - TALKING: Pulsates in sync with audio waveform
 
     Attributes:
-        blink_rate: Probability of blinking per frame (default 0.03).
+        radius: Radius of the sphere in characters (default 5).
     """
 
-    # Eye variants - more expressive
-    EYES = {
-        'open': '◉ ◉',
-        'blink': '─ ─',
-        'wide': '⊙ ⊙',
-        'squint': '◡ ◡',
-        'look_left': '◉  ◉',
-        'look_right': ' ◉ ◉',
-        'look_up': '◠ ◠',
-        'glitch': '█ █',
-        'scan': '▣ ▣',
-        'glow': '◎ ◎',
-    }
+    # Braille density levels (empty to full)
+    BRAILLE_DENSITY = [
+        ' ',      # Empty
+        '⠁', '⠂', '⠄', '⠈', '⠐', '⠠',  # Sparse
+        '⠃', '⠅', '⠉', '⠑', '⠡', '⠰',  # Low density
+        '⡀', '⡁', '⡂', '⡄', '⡈', '⡐',  # Medium-low
+        '⣀', '⣁', '⣂', '⣄', '⣈', '⣐',  # Medium
+        '⣠', '⣡', '⣢', '⣤', '⣨', '⣰',  # Medium-high
+        '⣷', '⣯', '⣿',                    # High density
+    ]
 
-    # Mouth variants - more animation frames
-    MOUTHS = {
-        'closed': '━━━━━',
-        'smile': '╰─┬─╯',
-        'talk_1': '╭─○─╮',
-        'talk_2': '│ ● │',
-        'talk_3': '╰─◎─╯',
-        'talk_4': '├─●─┤',
-        'think': '╌╌╌╌╌',
-        'processing': '▰▰▰▰▰',
-        'hum': '∿∿∿∿∿',
-    }
+    # Braille patterns for data streams (vertical emphasis)
+    STREAM_PATTERNS = [
+        '⠁', '⠃', '⠇', '⡇', '⣇', '⣧', '⣷', '⣿',
+        '⡿', '⠿', '⠟', '⠛', '⠓', '⠑', '⠁',
+    ]
 
-    # Antenna animations
-    ANTENNA = {
-        'idle': '   ╽   ',
-        'pulse_1': '  ╿╽╿  ',
-        'pulse_2': ' ╿ ╽ ╿ ',
-        'pulse_3': '╿  ╽  ╿',
-        'scan': '  ◠╽◠  ',
-        'transmit': '  ≋╽≋  ',
-    }
-
-    # Status indicators with glow effect
-    STATUS_ICONS = {
-        'IDLE': ('◇', '◆'),
-        'THINKING': ('◈', '◉'),
-        'TALKING': ('◆', '●'),
-    }
-
-    def __init__(self, blink_rate: float = 0.03):
-        """Initialize avatar.
+    def __init__(self, radius: int = 5):
+        """Initialize Braille avatar.
 
         Args:
-            blink_rate: Probability of blinking per frame.
+            radius: Radius of the spherical avatar.
         """
-        self.blink_rate = blink_rate
-        self._thinking_frame = 0
-        self._talking_frame = 0
-        self._idle_frame = 0
-        self._glitch_counter = 0
-        self._pulse_phase = 0.0
+        self.radius = radius
+        self.width = radius * 2 + 1
+        self.height = radius * 2 + 1
 
-    def get_frame(self, state: str) -> str:
-        """Get avatar frame as plain string (legacy compatibility).
-
-        Args:
-            state: Current state ('IDLE', 'THINKING', 'TALKING').
-
-        Returns:
-            ASCII art string of the avatar.
-        """
-        text = self.render(state)
-        return text.plain
+        # Animation state
+        self._rotation = 0.0
+        self._breathing_phase = 0.0
+        self._pulse_scale = 1.0
+        self._stream_offset = 0
+        self._glitch_intensity = 0.0
 
     def render(self, state: str) -> Text:
-        """Render avatar as Rich Text with component styling.
+        """Render avatar as Rich Text with organic animation.
 
         Args:
             state: Current state ('IDLE', 'THINKING', 'TALKING').
 
         Returns:
-            Rich Text object with styled avatar.
+            Rich Text object with styled spherical avatar.
         """
-        eyes, mouth, eye_style, antenna = self._get_state_parts(state)
-        status_pair = self.STATUS_ICONS.get(state, ('◇', '◆'))
+        if state == 'IDLE':
+            return self._render_idle()
+        elif state == 'THINKING':
+            return self._render_thinking()
+        elif state == 'TALKING':
+            return self._render_talking()
+        else:
+            return self._render_idle()
 
-        # Animate status icon
-        self._pulse_phase += 0.15
-        status = status_pair[0] if math.sin(self._pulse_phase) > 0 else status_pair[1]
+    def _render_idle(self) -> Text:
+        """Render idle state: gentle breathing and rotation."""
+        # Update breathing animation
+        self._breathing_phase += 0.05
+        self._rotation += 0.02
+
+        # Breathing effect: subtle scale oscillation
+        breath_scale = 1.0 + 0.1 * math.sin(self._breathing_phase)
 
         text = Text()
 
-        # Outer antenna/signal
-        text.append(f'     {antenna}     \n', style='avatar.frame')
+        for y in range(self.height):
+            line = Text()
+            for x in range(self.width):
+                # Calculate distance from center
+                dx = x - self.radius
+                dy = (y - self.radius) * 1.8  # Adjust for character aspect ratio
+                distance = math.sqrt(dx*dx + dy*dy) / breath_scale
 
-        # Top border with corner accents
-        text.append('  ╔═══════════════╗\n', style='avatar.frame')
+                # Sphere surface calculation
+                if distance < self.radius:
+                    # Calculate depth (z-coordinate)
+                    z = math.sqrt(max(0, self.radius*self.radius - distance*distance))
 
-        # Status indicator row
-        text.append('  ║', style='avatar.frame')
-        text.append(f'    ┌─{status}─┐    ', style=eye_style)
-        text.append('║\n', style='avatar.frame')
+                    # Add rotation for organic motion
+                    angle = math.atan2(dy, dx) + self._rotation
 
-        # Eyes row with side panels
-        text.append('  ║', style='avatar.frame')
-        text.append(' ◄ ', style='dim')
-        text.append(f'  {eyes}  ', style=eye_style)
-        text.append(' ► ', style='dim')
-        text.append('║\n', style='avatar.frame')
+                    # Calculate density based on depth and rotation
+                    density = (z / self.radius) * 0.8 + 0.2
+                    density *= (1.0 + 0.2 * math.sin(angle * 3))
 
-        # Nose/sensor row
-        text.append('  ║', style='avatar.frame')
-        text.append('    └──▽──┘    ', style='avatar.frame')
-        text.append('║\n', style='avatar.frame')
+                    # Add subtle noise
+                    density += random.uniform(-0.05, 0.05)
+                    density = max(0, min(1, density))
 
-        # Mouth row
-        text.append('  ║', style='avatar.frame')
-        text.append(f'    ╱{mouth}╲    ', style='avatar.mouth')
-        text.append('║\n', style='avatar.frame')
+                    # Map to Braille character
+                    braille_idx = int(density * (len(self.BRAILLE_DENSITY) - 1))
+                    char = self.BRAILLE_DENSITY[braille_idx]
 
-        # Bottom detail row
-        text.append('  ║', style='avatar.frame')
-        text.append('   ╰───────╯   ', style='dim')
-        text.append('║\n', style='avatar.frame')
+                    # Supreme design: Depth-based gradient coloring
+                    # z/depth determines brightness - closer = brighter
+                    depth_ratio = z / self.radius
+                    if depth_ratio > 0.8:
+                        style = 'avatar.core'  # Blinding core - brightest
+                    elif depth_ratio > 0.5:
+                        style = 'avatar.bright'  # Bright surface - cyan
+                    elif depth_ratio > 0.3:
+                        style = 'avatar.medium'  # Medium depth - dimmer cyan
+                    else:
+                        style = 'avatar.dim'  # Dim edges - fade to dark
 
-        # Bottom border
-        text.append('  ╚═══════════════╝', style='avatar.frame')
+                    line.append(char, style=style)
+                else:
+                    line.append(' ')
+
+            text.append(line)
+            text.append('\n')
 
         return text
 
-    def _get_state_parts(self, state: str) -> tuple[str, str, str, str]:
-        """Get eyes, mouth, eye style, and antenna for current state.
+    def _render_thinking(self) -> Text:
+        """Render thinking state: faster rotation with data streams."""
+        # Update thinking animation - faster rotation
+        self._rotation += 0.08
+        self._stream_offset = (self._stream_offset + 1) % len(self.STREAM_PATTERNS)
+
+        text = Text()
+
+        for y in range(self.height):
+            line = Text()
+            for x in range(self.width):
+                dx = x - self.radius
+                dy = (y - self.radius) * 1.8
+                distance = math.sqrt(dx*dx + dy*dy)
+
+                if distance < self.radius:
+                    z = math.sqrt(max(0, self.radius*self.radius - distance*distance))
+                    angle = math.atan2(dy, dx) + self._rotation
+
+                    # Base density
+                    density = (z / self.radius) * 0.8 + 0.2
+
+                    # Add vertical data stream effect
+                    stream_phase = (y + self._stream_offset) % len(self.STREAM_PATTERNS)
+                    if abs(dx) < 2 and random.random() > 0.3:  # Central vertical stream
+                        char = self.STREAM_PATTERNS[stream_phase]
+                        style = 'avatar.thinking'
+                    else:
+                        density *= (1.0 + 0.3 * math.sin(angle * 5))
+                        density = max(0, min(1, density))
+                        braille_idx = int(density * (len(self.BRAILLE_DENSITY) - 1))
+                        char = self.BRAILLE_DENSITY[braille_idx]
+
+                        if density > 0.6:
+                            style = 'avatar.thinking'
+                        else:
+                            style = 'dim'
+
+                    line.append(char, style=style)
+                else:
+                    line.append(' ')
+
+            text.append(line)
+            text.append('\n')
+
+        return text
+
+    def _render_talking(self) -> Text:
+        """Render talking state: pulsating sphere."""
+        # Update pulse animation
+        self._breathing_phase += 0.2
+        self._rotation += 0.05
+
+        # Strong pulse effect
+        pulse = 0.5 + 0.5 * math.sin(self._breathing_phase)
+        self._pulse_scale = 0.8 + 0.4 * pulse
+
+        text = Text()
+
+        for y in range(self.height):
+            line = Text()
+            for x in range(self.width):
+                dx = x - self.radius
+                dy = (y - self.radius) * 1.8
+                distance = math.sqrt(dx*dx + dy*dy) / self._pulse_scale
+
+                if distance < self.radius:
+                    z = math.sqrt(max(0, self.radius*self.radius - distance*distance))
+                    angle = math.atan2(dy, dx) + self._rotation
+
+                    # Density with pulse modulation
+                    density = (z / self.radius) * 0.9 + 0.1
+                    density *= (1.0 + 0.3 * math.sin(angle * 4 + self._breathing_phase))
+
+                    # Add pulse rings
+                    ring_dist = abs(distance - self.radius * 0.7)
+                    if ring_dist < 0.5:
+                        density = min(1.0, density + 0.3 * (1.0 - ring_dist * 2))
+
+                    density = max(0, min(1, density))
+                    braille_idx = int(density * (len(self.BRAILLE_DENSITY) - 1))
+                    char = self.BRAILLE_DENSITY[braille_idx]
+
+                    # Enhanced talking state with pulse effect
+                    pulse_mod = 0.3 * math.sin(self._breathing_phase * 2)
+                    if density > 0.8:
+                        style = 'avatar.pulse'  # Pulsing cyan core
+                    elif density > 0.6:
+                        style = 'waveform.active'  # Bold cyan
+                    elif density > 0.4:
+                        style = 'avatar.frame'
+                    else:
+                        style = 'dim'
+
+                    line.append(char, style=style)
+                else:
+                    line.append(' ')
+
+            text.append(line)
+            text.append('\n')
+
+        return text
+
+    def set_pulse_scale(self, scale: float) -> None:
+        """Set pulse scale from external source (e.g., audio amplitude).
 
         Args:
-            state: Current state string.
-
-        Returns:
-            Tuple of (eyes, mouth, eye_style, antenna).
+            scale: Pulse scale factor (0.5-1.5 recommended).
         """
-        eye_style = 'avatar.eyes'
-        antenna = self.ANTENNA['idle']
+        self._pulse_scale = max(0.5, min(1.5, scale))
 
-        if state == 'IDLE':
-            # Occasional blink, otherwise calm
-            self._idle_frame = (self._idle_frame + 1) % 60
-            if random.random() < self.blink_rate:
-                eyes = self.EYES['blink']
-            elif self._idle_frame % 30 == 0:
-                eyes = self.EYES['glow']
-            else:
-                eyes = self.EYES['open']
-            mouth = self.MOUTHS['closed']
-            antenna = self.ANTENNA['idle']
+    def reset(self) -> None:
+        """Reset animation state."""
+        self._rotation = 0.0
+        self._breathing_phase = 0.0
+        self._pulse_scale = 1.0
+        self._stream_offset = 0
 
-        elif state == 'THINKING':
-            # Animated thinking - cycle through looks
-            self._thinking_frame = (self._thinking_frame + 1) % 12
-            eye_style = 'avatar.thinking'
 
-            if self._thinking_frame < 3:
-                eyes = self.EYES['look_left']
-            elif self._thinking_frame < 6:
-                eyes = self.EYES['scan']
-            elif self._thinking_frame < 9:
-                eyes = self.EYES['look_right']
-            else:
-                eyes = self.EYES['squint']
-
-            # Processing mouth animation
-            dots = (self._thinking_frame % 4)
-            mouth = '▪' * dots + '─' * (5 - dots)
-
-            # Antenna pulse animation
-            pulse_seq = ['pulse_1', 'pulse_2', 'pulse_3', 'pulse_2']
-            antenna = self.ANTENNA[pulse_seq[self._thinking_frame % 4]]
-
-        elif state == 'TALKING':
-            # Animated talking
-            self._talking_frame = (self._talking_frame + 1) % 8
-
-            # Occasional blink while talking
-            if random.random() < self.blink_rate / 2:
-                eyes = self.EYES['blink']
-            elif self._talking_frame % 4 == 0:
-                eyes = self.EYES['wide']
-            else:
-                eyes = self.EYES['open']
-
-            # Mouth animation cycle
-            mouth_seq = ['talk_1', 'talk_2', 'talk_3', 'talk_4']
-            mouth = self.MOUTHS[mouth_seq[self._talking_frame % 4]]
-
-            # Transmit antenna
-            antenna = self.ANTENNA['transmit']
-
-        else:
-            # Default/unknown state
-            eyes = self.EYES['open']
-            mouth = self.MOUTHS['closed']
-            antenna = self.ANTENNA['idle']
-
-        return eyes, mouth, eye_style, antenna
-
-    def glitch(self) -> Text:
-        """Render a glitched frame (for errors/transitions).
-
-        Returns:
-            Rich Text with glitch effect.
-        """
-        self._glitch_counter += 1
-
-        text = Text()
-        glitch_chars = '█▓▒░╔╗║╚╝═'
-
-        for _ in range(6):
-            line = ''.join(random.choice(glitch_chars) for _ in range(17))
-            text.append(line + '\n', style='danger')
-
-        return text
+# Legacy compatibility alias
+AIAvatar = BrailleAvatar

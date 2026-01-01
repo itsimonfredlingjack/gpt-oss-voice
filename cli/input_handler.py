@@ -11,6 +11,10 @@ from dataclasses import dataclass
 from typing import Optional
 from enum import Enum, auto
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.history import InMemoryHistory
+
 
 class InputEventType(Enum):
     """Types of input events."""
@@ -34,9 +38,11 @@ class InputEvent:
 class InputHandler:
     """Non-blocking input handler using a dedicated thread.
 
-    The handler runs input() in a background thread, allowing
+    The handler runs prompt_toolkit in a background thread, allowing
     the main thread to continue rendering animations. Input
     events are passed via a thread-safe queue.
+
+    Uses patch_stdout() to prevent Rich Live from breaking input display.
 
     Example:
         >>> handler = InputHandler()
@@ -59,6 +65,11 @@ class InputHandler:
         self._running = threading.Event()
         self._input_enabled = threading.Event()
         self._waiting_for_input = threading.Event()
+        # prompt_toolkit session for terminal-safe input
+        self._session = PromptSession(
+            history=InMemoryHistory(),
+            enable_history_search=True,
+        )
 
     @property
     def is_running(self) -> bool:
@@ -136,7 +147,9 @@ class InputHandler:
 
             try:
                 self._waiting_for_input.set()
-                line = input()  # Blocking in this thread, OK
+                # Use prompt_toolkit WITHOUT patch_stdout - Rich Live manages terminal
+                # patch_stdout() conflicts with Rich Live's screen=True mode
+                line = self._session.prompt(self._prompt or '')
                 self._waiting_for_input.clear()
 
                 # Check exit commands

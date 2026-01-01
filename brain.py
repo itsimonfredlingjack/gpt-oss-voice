@@ -6,9 +6,25 @@ import sys
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "gptoss-agent"
 
+
+class BrainConnectionError(Exception):
+    """Raised when unable to connect to Ollama service."""
+    pass
+
+
+class BrainEmptyResponseError(Exception):
+    """Raised when Ollama returns an empty response."""
+    pass
+
 def ask_brain(prompt):
-    print(f"🧠  Skickar tanke till {MODEL_NAME}: '{prompt}'")
+    """Query the AI brain via Ollama.
     
+    Args:
+        prompt: User's prompt/question.
+    
+    Returns:
+        AI response string. Raises exceptions on error (no print statements).
+    """
     # Vi ändrar prompten lite för att säkra att den faktiskt pratar
     system_prompt = (
         "Du är 'GPT', en skön AI-assistent. "
@@ -32,28 +48,22 @@ def ask_brain(prompt):
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=30)
         response.raise_for_status()
-        
-        data = response.json()
-        
-        # --- DEBUG: Se exakt vad modellen skickar tillbaka (även det dolda) ---
-        # Om den svarar tomt ser vi varför här:
-        # print(f"DEBUG RAW: {data}") 
-        # ---------------------------------------------------------------------
-
-        ai_reply = data.get('message', {}).get('content', '')
-        
-        if not ai_reply:
-            print("⚠️  Varning: Modellen svarade tomt! (Kolla om den 'tänker' utan att prata)")
-            return "Jag hörde dig, men min tankeprocess returnerade ingen data."
-
-        print(f"🤖 AI Svar: {ai_reply}")
-        return ai_reply
-
-    except Exception as e:
-        print(f"🔥 KRASCH: {e}")
-        return "Systemfel i neurala nätverket."
+    except requests.exceptions.ConnectionError as e:
+        raise BrainConnectionError(f"Cannot connect to Ollama at {OLLAMA_URL}") from e
+    except requests.exceptions.Timeout as e:
+        raise BrainConnectionError("Ollama request timed out") from e
+    except requests.exceptions.RequestException as e:
+        raise BrainConnectionError(f"Ollama request failed: {e}") from e
+    
+    data = response.json()
+    ai_reply = data.get('message', {}).get('content', '')
+    
+    if not ai_reply:
+        raise BrainEmptyResponseError("Model returned empty response")
+    
+    return ai_reply
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -74,3 +84,9 @@ if __name__ == "__main__":
             except KeyboardInterrupt:
                 print("\nStänger ner.")
                 break
+            except BrainConnectionError as e:
+                print(f"⚠️  Nätverksfel: {e}")
+            except BrainEmptyResponseError as e:
+                print(f"⚠️  Varning: {e}")
+            except Exception as e:
+                print(f"⚠️  Ett fel inträffade: {e}")

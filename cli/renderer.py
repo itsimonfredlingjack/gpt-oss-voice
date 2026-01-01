@@ -14,13 +14,61 @@ class StreamConfig:
     """Configuration for streaming text.
 
     Attributes:
-        char_delay: Seconds between characters.
-        word_delay: Additional delay after spaces.
-        line_delay: Additional delay after newlines.
+        char_delay: Base delay between characters (seconds).
+        period_delay: Delay after period/exclamation/question (.!?).
+        comma_delay: Delay after comma (,).
+        colon_delay: Delay after colon/semicolon (:;).
+        newline_delay: Delay after newline (\n).
+        sentence_space_delay: Delay for space after sentence-ending punctuation.
+        word_delay: Additional delay after regular spaces (deprecated, use char_delay).
+        line_delay: Additional delay after newlines (deprecated, use newline_delay).
     """
     char_delay: float = 0.02
+    period_delay: float = 0.08
+    comma_delay: float = 0.04
+    colon_delay: float = 0.05
+    newline_delay: float = 0.15
+    sentence_space_delay: float = 0.03
+    # Backward compatibility
     word_delay: float = 0.05
     line_delay: float = 0.1
+
+    def get_delay(self, char: str, prev_char: str = '') -> float:
+        """Calculate delay for a character based on punctuation rules.
+
+        Args:
+            char: Current character being displayed.
+            prev_char: Previous character (for context-aware delays).
+
+        Returns:
+            Delay in seconds for this character.
+        """
+        # Sentence-ending punctuation
+        if char in '.!?':
+            return self.period_delay
+
+        # Comma
+        if char == ',':
+            return self.comma_delay
+
+        # Colon/semicolon
+        if char in ':;':
+            return self.colon_delay
+
+        # Newline
+        if char == '\n':
+            return self.newline_delay
+
+        # Space after sentence-ending punctuation
+        if char == ' ' and prev_char in '.!?':
+            return self.sentence_space_delay
+
+        # Regular space (backward compatibility fallback)
+        if char == ' ':
+            return self.char_delay + self.word_delay
+
+        # Default character delay
+        return self.char_delay
 
 
 class StreamingRenderer:
@@ -111,14 +159,11 @@ class StreamingRenderer:
                     break
 
                 char = self._full_text[self._current_pos]
+                prev_char = self._full_text[self._current_pos - 1] if self._current_pos > 0 else ''
                 self._current_pos += 1
 
-            # Calculate delay based on character
-            delay = self.config.char_delay
-            if char == ' ':
-                delay += self.config.word_delay
-            elif char == '\n':
-                delay += self.config.line_delay
+            # Calculate delay using punctuation-aware method
+            delay = self.config.get_delay(char, prev_char)
 
             time.sleep(delay)
 
@@ -140,10 +185,8 @@ def stream_chars(text: str, config: Optional[StreamConfig] = None) -> Generator[
     for i, char in enumerate(text):
         yield text[:i + 1]
 
-        delay = cfg.char_delay
-        if char == ' ':
-            delay += cfg.word_delay
-        elif char == '\n':
-            delay += cfg.line_delay
+        # Get previous character for context-aware delays
+        prev_char = text[i - 1] if i > 0 else ''
+        delay = cfg.get_delay(char, prev_char)
 
         time.sleep(delay)

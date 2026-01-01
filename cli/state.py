@@ -73,6 +73,7 @@ class StateManager:
         self._history: list[StateTransition] = []
         self._state_entered_at: float = time.time()
         self._last_error: Optional[str] = None
+        self._speaking_text: Optional[str] = None  # Text currently being spoken
 
     @property
     def state(self) -> AppState:
@@ -109,6 +110,21 @@ class StateManager:
         """Get last error message if in ERROR state."""
         with self._lock:
             return self._last_error
+
+    @property
+    def speaking_text(self) -> Optional[str]:
+        """Get text currently being spoken (for voice-first indicator)."""
+        with self._lock:
+            return self._speaking_text
+
+    def set_speaking_text(self, text: Optional[str]) -> None:
+        """Set text currently being spoken.
+        
+        Args:
+            text: Text being spoken, or None if not speaking.
+        """
+        with self._lock:
+            self._speaking_text = text
 
     def set_error(self, message: str) -> bool:
         """Transition to ERROR state with message.

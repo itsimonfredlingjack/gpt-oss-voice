@@ -14,13 +14,19 @@ from cli.state import (
     STATE_MESSAGES,
     STATE_HINTS,
 )
-from cli.theme import CYBERPUNK_THEME, COLORS
-from cli.avatar import AIAvatar
+from cli.theme import (
+    SOLARIZED_LIGHT_THEME,
+    CYBERPUNK_THEME,
+    SOLARIZED_COLORS,
+    CYBERPUNK_COLORS,
+)
+from cli.avatar import AIAvatar, BrailleAvatar
 from cli.waveform import Waveform
 from cli.layout import make_layout
 
 # --- Legacy theme alias ---
-SOLARIZED_THEME = CYBERPUNK_THEME
+SOLARIZED_THEME = SOLARIZED_LIGHT_THEME
+COLORS = SOLARIZED_COLORS  # Default to Solarized Light colors
 
 # --- Legacy state management (backward compatibility) ---
 APP_STATE = "IDLE"
@@ -77,9 +83,13 @@ __all__ = [
     'AppState',
     'StateManager',
     'get_state_manager',
+    'SOLARIZED_LIGHT_THEME',
     'CYBERPUNK_THEME',
+    'SOLARIZED_COLORS',
+    'CYBERPUNK_COLORS',
     'COLORS',
     'AIAvatar',
+    'BrailleAvatar',
     'Waveform',
     'make_layout',
     # Legacy exports
