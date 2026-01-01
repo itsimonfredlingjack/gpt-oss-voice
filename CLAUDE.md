@@ -4,87 +4,101 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Google Home Hack** is a voice-activated AI assistant that integrates a local LLM (Ollama) with Google Home speakers via Chromecast. The main interface is "The Core CLI" - a futuristic Rich-based terminal UI featuring an animated AI avatar and waveform visualization.
+**Google Home Hack** is a voice-activated AI assistant that integrates a local LLM (Ollama) with Google Home speakers via Chromecast. The main interface is "The Core CLI" - a cyberpunk-themed Rich-based terminal UI with animated avatar, waveform visualization, and non-blocking input.
 
 ## Commands
 
 ```bash
+# Run the CLI interface (two ways)
+python cli.py
+python -m cli.app
+
 # Run tests
 pytest
+pytest tests/test_avatar.py           # Single file
+pytest --cov=. --cov-report=html      # With coverage
 
-# Run tests with coverage
-pytest --cov=. --cov-report=html
-
-# Run a single test file
-pytest tests/test_avatar.py
-
-# Run the CLI interface
-python cli.py
-
-# Direct TTS test
-python speak.py "Hej, detta är ett test."
-
-# Interactive AI chat (standalone)
-python brain.py
-
-# System monitoring with voice output
-python monitor.py
+# Direct module tests
+python speak.py "Hej, detta är ett test."  # TTS
+python brain.py                             # AI chat
 ```
 
 ## Architecture
 
-### Module Dependencies
 ```
-cli.py  ──imports──>  brain.py  ──API──>  Ollama (localhost:11434)
-   │
-   └─────imports──>  speak.py  ──Cast──>  Google Home ("Kontor")
+cli.py (entry point)
+  └── cli/app.py (CLIApp)
+        ├── cli/state.py      StateManager (IDLE→THINKING→TALKING→ERROR)
+        ├── cli/raw_input.py  RawInputHandler (termios, escape sequences)
+        ├── cli/renderer.py   StreamingRenderer (typewriter effect)
+        ├── cli/avatar.py     BrailleAvatar (depth-based coloring)
+        ├── cli/waveform.py   Waveform animation
+        ├── cli/layout.py     Rich Layout composition
+        ├── cli/theme.py      Midnight Tokyo / Solarized themes
+        ├── brain.py          Ollama API (localhost:11434)
+        └── speak.py          GoogleHomeSpeaker (Chromecast TTS)
 ```
 
-### Core Modules
+### Async + Threading Pattern
 
-| Module | Purpose |
-|--------|---------|
-| `cli.py` | Main Rich-based terminal UI with `AIAvatar`, `Waveform`, and threaded state machine |
-| `brain.py` | Ollama API wrapper using `gptoss-agent` model. Key function: `ask_brain(prompt)` |
-| `speak.py` | PyChromecast TTS via Google Translate. Key function: `speak(text)` (blocking) |
-| `monitor.py` | System health reporter (CPU/RAM/Disk) with voice output |
+The main loop is `asyncio` but blocking I/O uses thread pools:
+```python
+# In CLIApp._brain_worker()
+response = await loop.run_in_executor(None, ask_brain, prompt)
 
-### CLI State Machine (`cli.py`)
+# In CLIApp._speak_worker()
+await loop.run_in_executor(None, self.speaker.speak, text)
+```
 
-The application uses a global `APP_STATE` with three states:
-- **IDLE**: Avatar blinking, waveform flat, waiting for user input
-- **THINKING**: Brain thread processing, UI shows "Thinking..."
-- **TALKING**: Speaking thread active, avatar mouth animates, waveform moves
+**Critical**: Both `speak()` and `ask_brain()` are blocking. Never call them directly in the async loop.
 
-Threading is critical: `speak()` is blocking, so `speak_threaded()` runs it in a daemon thread while the `Live` context continues rendering animations.
+### State Machine
 
-### Theme
+`StateManager` in `cli/state.py` enforces valid transitions:
+```
+IDLE → THINKING → TALKING → IDLE
+         ↓          ↓
+       ERROR  ←  ERROR  → IDLE
+```
 
-Uses Solarized Light palette via `rich.theme.Theme`:
-- Avatar eyes: `#268bd2` (Blue)
-- Avatar mouth: `#d33682` (Magenta)
-- Waveform: `#2aa198` (Cyan)
-- User input: `#cb4b16` (Orange)
+States control input handling, avatar animation, and waveform behavior.
+
+### Input Handling
+
+`RawInputHandler` uses `termios` in cbreak mode for character-by-character capture without conflicting with Rich Live. Key features:
+- Arrow keys for cursor movement and history
+- Escape sequence parsing with `_escape_buffer`
+- Ctrl+C interrupts current state, second press exits
+- Max 10,000 char buffer with validation
 
 ## Configuration
 
-- **Google Home device**: Change `DEVICE_NAME` in `speak.py` (default: "Kontor")
-- **LLM model**: Change `MODEL_NAME` in `brain.py` (default: "gptoss-agent")
-- **Language**: Swedish (`tl=sv`) hardcoded in TTS and system prompt
+| Setting | Location | Default |
+|---------|----------|---------|
+| Google Home device | `speak.py:DEVICE_NAME` | "Kontor" |
+| LLM model | `brain.py:MODEL_NAME` | "gptoss-agent" |
+| Language | `speak.py` TTS URL + `brain.py` system prompt | Swedish |
+| Theme | `cli/app.py:CLIApp.__init__` | MIDNIGHT_TOKYO_THEME |
+| FPS | `cli/app.py:AppConfig.fps` | 15 |
+
+## Error Handling
+
+Custom exceptions enable targeted UX messages:
+- `BrainConnectionError` / `BrainEmptyResponseError` in `brain.py`
+- `DeviceNotFoundError` in `speak.py`
+
+The app shows user-friendly error messages and auto-recovers after 5 seconds.
 
 ## Conductor Workflow
 
-This project uses the Conductor methodology for task management:
-- Plans are tracked in `conductor/tracks/<track_name>/plan.md`
-- Follow TDD: write failing tests first, then implement
+Plans tracked in `conductor/tracks/<track_name>/plan.md`:
 - Mark tasks `[~]` (in progress) → `[x]` (complete) with commit SHA
-- Target >80% code coverage
+- Follow TDD: failing test → implementation → green
+- Target >80% coverage
 
 ## Code Style
 
-Follow Google Python Style Guide (see `conductor/code_styleguides/python.md`):
-- 80 char line limit
-- 4-space indentation
-- `snake_case` for functions/variables, `PascalCase` for classes
-- Type annotations encouraged
-- All public functions need docstrings
+Google Python Style Guide (`conductor/code_styleguides/python.md`):
+- 80 char lines, 4-space indent
+- Type hints, docstrings on public functions
+- `snake_case` functions, `PascalCase` classes
