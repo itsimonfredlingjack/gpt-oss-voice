@@ -50,12 +50,17 @@ def make_layout() -> Layout:
     return layout
 
 
-def make_header(title: str = 'THE CORE', subtitle: str = '') -> Panel:
+def make_header(
+    title: str = 'THE CORE',
+    subtitle: str = '',
+    border_style: str = 'border'
+) -> Panel:
     """Create styled header panel with tech decorations (supreme design).
 
     Args:
         title: Main title text.
         subtitle: Optional subtitle.
+        border_style: Style for the panel border.
 
     Returns:
         Styled Panel for header.
@@ -75,7 +80,7 @@ def make_header(title: str = 'THE CORE', subtitle: str = '') -> Panel:
     return Panel(
         text,
         box=ROUNDED,
-        border_style='border',
+        border_style=border_style,
         padding=(1, 2),
     )
 
@@ -85,7 +90,8 @@ def make_footer(
     output: str = 'Google Home',
     status: str = '',
     hint: str = '',
-    speaking_text: Optional[str] = None
+    speaking_text: Optional[str] = None,
+    border_style: str = 'border.dim'
 ) -> Panel:
     """Create styled footer panel with status and user hints.
 
@@ -94,6 +100,7 @@ def make_footer(
         output: Audio output device.
         status: Status message (state-based).
         hint: User guidance text.
+        border_style: Style for the panel border.
 
     Returns:
         Styled Panel for footer.
@@ -149,7 +156,7 @@ def make_footer(
     return Panel(
         content,
         box=ROUNDED,
-        border_style='border.dim',
+        border_style=border_style,
         padding=(1, 2),
     )
 
@@ -157,7 +164,8 @@ def make_footer(
 def make_sidebar_panel(
     avatar_content: Text,
     waveform,  # Can be str or Rich Text
-    state: str
+    state: str,
+    border_style: str = 'border'
 ) -> Panel:
     """Create styled sidebar panel with avatar and waveform.
 
@@ -165,6 +173,7 @@ def make_sidebar_panel(
         avatar_content: Rich Text of rendered avatar.
         waveform: Waveform string or Rich Text (with gradient colors).
         state: Current state for styling.
+        border_style: Style for the panel border.
 
     Returns:
         Styled Panel for sidebar.
@@ -208,17 +217,22 @@ def make_sidebar_panel(
         content,
         title=f'[{status_style}]{symbol} {state} {symbol}[/{status_style}]',
         box=ROUNDED,
-        border_style='border',
+        border_style=border_style,
         padding=(1, 2),
     )
 
 
-def make_log_panel(content, title: str = 'TRANSMISSIONS') -> Panel:
+def make_log_panel(
+    content,
+    title: str = 'TRANSMISSIONS',
+    border_style: str = 'border'
+) -> Panel:
     """Create styled log panel for conversation.
 
     Args:
         content: Rich renderable content.
         title: Panel title.
+        border_style: Style for the panel border.
 
     Returns:
         Styled Panel for log.
@@ -227,6 +241,6 @@ def make_log_panel(content, title: str = 'TRANSMISSIONS') -> Panel:
         content,
         title=f'[info]◈ {title} ◈[/info]',
         box=ROUNDED,
-        border_style='border',
+        border_style=border_style,
         padding=(1, 2),
     )

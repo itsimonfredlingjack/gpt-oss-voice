@@ -10,6 +10,7 @@ streaming text output, and a visually striking aesthetic.
 
 import asyncio
 import time
+import math
 import sys
 import logging
 import random
@@ -149,6 +150,9 @@ class CLIApp:
         self._frame_count = 0
         self._glitch_chance = 0.005
         
+        # Pulse effect variables
+        self._pulse_speed = 5.0
+
         # Performance optimization: Pre-build common strings
         self.USER_SEPARATOR = "━━━━━━━━━━━━━━━━━━━━"
         self.AI_SEPARATOR = "━━━━━━━━━━━━━━━━━━━━━"
@@ -434,11 +438,16 @@ class CLIApp:
         """Update all layout components."""
         state_name = self.state.state_name
 
+        # Calculate dynamic border style
+        border_style = 'border'
+        if state_name == 'TALKING':
+            border_style = self._get_pulse_style()
+
         # Header with optional glitch
         if self._should_glitch():
-            header = make_header("T̷H̷E̷ ̷C̷O̷R̷E̷", "◇ SIGNAL INTERFERENCE ◇")
+            header = make_header("T̷H̷E̷ ̷C̷O̷R̷E̷", "◇ SIGNAL INTERFERENCE ◇", border_style=border_style)
         else:
-            header = make_header("THE CORE", "◇ NEURAL INTERFACE v2.0 ◇")
+            header = make_header("THE CORE", "◇ NEURAL INTERFACE v2.0 ◇", border_style=border_style)
 
         self.layout["header"].update(header)
 
@@ -461,7 +470,8 @@ class CLIApp:
                 output=self.config.output_device,
                 status=status,
                 hint=hint,
-                speaking_text=self.state.speaking_text  # Voice-first: show speaking text
+                speaking_text=self.state.speaking_text,  # Voice-first: show speaking text
+                border_style=border_style if state_name == 'TALKING' else 'border.dim'
             )
         )
 
@@ -476,12 +486,12 @@ class CLIApp:
             waveform_text = Text(waveform_str, style='waveform')
 
         self.layout["sidebar"].update(
-            make_sidebar_panel(avatar_text, waveform_text, state_name)
+            make_sidebar_panel(avatar_text, waveform_text, state_name, border_style=border_style)
         )
 
         # Log (Conversation)
         self.layout["log"].update(
-            make_log_panel(self._render_history())
+            make_log_panel(self._render_history(), border_style=border_style)
         )
 
     def _render_history(self) -> Group:
@@ -492,21 +502,51 @@ class CLIApp:
         """
         elements = []
 
+        # Calculate total messages for decay logic
+        total_msgs = len(self.history)
+
         # Performance: Iterate directly over deque (no list conversion needed)
         # deque is iterable and efficient for this use case
-        for msg in self.history:
+        for index, msg in enumerate(self.history):
+            # Calculate message age (0 is newest)
+            age = total_msgs - 1 - index
+
+            # Determine style based on age
+            if age == 0:
+                user_style = "user_input"
+                ai_style = "bright_text" # Using bright_text from theme instead of markdown default
+                prefix_style = "ai_label"
+            elif age <= 3:
+                user_style = "dim"
+                ai_style = "dim"
+                prefix_style = "dim"
+            elif age <= 10:
+                user_style = "dim" # Darker dim not easily available without custom style, using dim
+                ai_style = "#444444" # dim grey30 approx
+                prefix_style = "#444444"
+            else:
+                user_style = "#333333"
+                ai_style = "#333333"
+                prefix_style = "#333333"
+
+            # Apply corruption to ancient history
+            content = msg.content
+            if age > 10:
+                content = self._corrupt_text(content)
+
             if msg.role == 'user':
                 text = Text()
-                text.append(self.USER_PREFIX, style="user_input")
+                # Fix visual regression: User prefix should use user_style, not prefix_style (which is for AI)
+                text.append(self.USER_PREFIX, style=user_style)
                 text.append(self.USER_SEPARATOR, style="dim")
                 elements.append(text)
                 elements.append(
-                    Padding(Text(msg.content, style="user_input"), (0, 0, 1, 2))
+                    Padding(Text(content, style=user_style), (0, 0, 1, 2))
                 )
 
             elif msg.role == 'ai':
                 text = Text()
-                text.append(self.AI_PREFIX, style="ai_label")
+                text.append(self.AI_PREFIX, style=prefix_style)
                 text.append(self.AI_SEPARATOR, style="dim")
                 elements.append(text)
 
@@ -514,16 +554,24 @@ class CLIApp:
                 # Performance: Check if this is the last message efficiently
                 is_last = msg is self.history[-1] if self.history else False
                 if is_last and self.renderer.is_streaming:
-                    content = self.renderer.current_text
+                    stream_content = self.renderer.current_text
                     # Add cursor blink effect
                     if self._frame_count % 10 < 5:
-                        content += "▊"
+                        stream_content += "▊"
+                    elements.append(
+                        Padding(Markdown(stream_content), (0, 0, 1, 2))
+                    )
                 else:
-                    content = msg.content
-
-                elements.append(
-                    Padding(Markdown(content), (0, 0, 1, 2))
-                )
+                    # Apply manual styling for decayed messages instead of Markdown
+                    # to control the color properly
+                    if age == 0:
+                         elements.append(
+                            Padding(Markdown(content), (0, 0, 1, 2))
+                        )
+                    else:
+                        elements.append(
+                            Padding(Text(content, style=ai_style), (0, 0, 1, 2))
+                        )
 
         # Show input prompt when idle
         if self.show_prompt and self.state.state == AppState.IDLE:
@@ -577,6 +625,48 @@ class CLIApp:
             True if glitch should occur.
         """
         return random.random() < self._glitch_chance
+
+    def _get_pulse_style(self) -> str:
+        """Generate a pulsing border color style based on time.
+
+        Alternates between Neon Cyan (#00f3ff) and Neon Pink (#ff00ff).
+
+        Returns:
+            A rich style string with the calculated color.
+        """
+        t = (math.sin(time.time() * self._pulse_speed) + 1) / 2  # 0.0 to 1.0
+
+        # Cyan: 0, 243, 255
+        # Pink: 255, 0, 255
+
+        r = int(t * 255)
+        g = int((1 - t) * 243)
+        b = 255
+
+        return f"bold #{r:02x}{g:02x}{b:02x}"
+
+    def _corrupt_text(self, text: str) -> str:
+        """Apply visual corruption to text.
+
+        Args:
+            text: The text to corrupt.
+
+        Returns:
+            Corrupted text string.
+        """
+        chars = list(text)
+        length = len(chars)
+
+        # Corrupt 10% of characters randomly per frame
+        # This creates a "digital rain" effect for ancient history
+        num_corrupt = max(1, length // 10)
+
+        for _ in range(num_corrupt):
+            idx = random.randint(0, length - 1)
+            if chars[idx] not in "\n\t ": # Don't corrupt whitespace heavily
+                chars[idx] = random.choice([".", "0", "1", "⁖", "x", "+"])
+
+        return "".join(chars)
 
     def _shutdown(self) -> None:
         """Clean shutdown sequence."""
