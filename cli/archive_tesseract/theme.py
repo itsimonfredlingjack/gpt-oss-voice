@@ -120,79 +120,69 @@ SOLARIZED_LIGHT_THEME = Theme({
 
 
 
-
-# Chimera - Damaged Terminal Palette
-CHIMERA_COLORS = {
-    # Base - Void
-    'bg_void': '#000000',      # Pure Black
-    'bg_panel': '#050505',     # Near Black
+# Neon Glass - Project Tesseract Palette
+NEON_GLASS_COLORS = {
+    # Base - Deepest Black
+    'bg_void': '#050505',
+    'bg_panel': '#0a0a0a',
     
-    # Data Streams
-    'matrix_green': '#00ff41', # Standard Data
-    'cyber_yellow': '#fcee0a', # Warning / Caution
-    'trauma_red': '#ff0055',   # Overheat / Critical
-    'scanline': '#1a1a1a',     # Scanline dark
+    # Accents - High Contrast
+    'magenta': '#ff00ff',      # Neon Magenta (Critical/Thinking)
+    'green': '#00ff00',        # Matrix Green (Talk/Success)
+    'cyan': '#00f3ff',         # Electric Cyan (Idle/Info)
+    'yellow': '#ffff00',       # Warning
     
-    # Armor / Structure
-    'armor_light': '#606060',  
-    'armor_dark': '#303030',
-    'armor_edge': '#808080',
-    
-    # Text
-    'text_main': '#c0c0c0',    # CRT Gray
-    'text_bright': '#ffffff',  # Phosphor White
+    # Functional
+    'text_main': '#e0e0e0',
     'text_dim': '#404040',
+    'border_idle': '#404040',
+    'border_pulse': '#ffffff', # Bright white for pulsing
 }
 
-CHIMERA_THEME = Theme({
+NEON_GLASS_THEME = Theme({
     # Base
-    'base': CHIMERA_COLORS['text_main'],
-    'dim': CHIMERA_COLORS['text_dim'],
+    'base': NEON_GLASS_COLORS['text_main'],
+    'dim': NEON_GLASS_COLORS['text_dim'],
     
-    # Header - Tactical Gauge
-    'header': f"bold {CHIMERA_COLORS['matrix_green']}",
-    'header.label': f"bold {CHIMERA_COLORS['text_main']}",
-    'header.value': f"bold {CHIMERA_COLORS['matrix_green']}",
-    'header.gauge.filled': f"{CHIMERA_COLORS['matrix_green']}",
-    'header.gauge.empty': f"{CHIMERA_COLORS['armor_dark']}",
+    # Header - Orbital Feed
+    'header': f"bold {NEON_GLASS_COLORS['cyan']}",
+    'header.label': f"bold {NEON_GLASS_COLORS['magenta']}",
+    'header.value': f"{NEON_GLASS_COLORS['green']}",
     
-    # Mecha-Core Avatar
-    'mech.armor': f"{CHIMERA_COLORS['armor_light']}",
-    'mech.armor.dark': f"{CHIMERA_COLORS['armor_dark']}",
-    'mech.edge': f"{CHIMERA_COLORS['armor_edge']}",
-    'mech.eye': f"bold {CHIMERA_COLORS['cyber_yellow']}",      # Sentry Mode
-    'mech.eye.active': f"bold {CHIMERA_COLORS['trauma_red']}", # Thinking/SCAN
-    'mech.mouth': f"{CHIMERA_COLORS['armor_dark']}",
+    # Tesseract Avatar
+    'avatar.vertex': f"bold {NEON_GLASS_COLORS['cyan']}",
+    'avatar.edge': f"{NEON_GLASS_COLORS['text_dim']}",
+    'avatar.wobble': f"bold {NEON_GLASS_COLORS['magenta']}", # Thinking
+    'avatar.pulse': f"bold {NEON_GLASS_COLORS['green']}",    # Talking
     
-    # Tactical HUD Borders
-    'border': CHIMERA_COLORS['armor_dark'],
-    'border.active': CHIMERA_COLORS['matrix_green'],
-    'border.danger': CHIMERA_COLORS['trauma_red'],
-    'border.warning': CHIMERA_COLORS['cyber_yellow'],
+    # Orbital HUD Borders
+    'border': NEON_GLASS_COLORS['border_idle'],
+    'border.active': f"bold {NEON_GLASS_COLORS['cyan']}",
+    'border.talking': f"bold {NEON_GLASS_COLORS['green']}",
+    'border.thinking': f"bold {NEON_GLASS_COLORS['magenta']}",
     
     # Command Feed
-    'user_prompt': f"bold {CHIMERA_COLORS['matrix_green']}",
-    'user_input': f"bold {CHIMERA_COLORS['text_bright']}",
-    'user_cursor': f"reverse {CHIMERA_COLORS['matrix_green']}",
+    'user_prompt': f"bold {NEON_GLASS_COLORS['green']}",
+    'user_input': f"bold {NEON_GLASS_COLORS['text_main']}",
+    'user_cursor': f"bold {NEON_GLASS_COLORS['magenta']}",
     
-    # Environment Effects
-    'scanline.odd': f"{CHIMERA_COLORS['text_main']} on {CHIMERA_COLORS['bg_void']}",
-    'scanline.even': f"{CHIMERA_COLORS['text_main']} on {CHIMERA_COLORS['scanline']}",
-    'glitch.1': f"bold {CHIMERA_COLORS['trauma_red']}",
-    'glitch.2': f"bold {CHIMERA_COLORS['cyber_yellow']}",
-    'glitch.3': f"bold cyan", # Chromatic Aberration Blue
+    # Text Effects
+    'text.decay.0': f"{NEON_GLASS_COLORS['text_main']}",
+    'text.decay.1': "#b0b0b0",
+    'text.decay.2': "#808080",
+    'text.decay.3': "#505050",
+    'text.decay.4': "#303030",
     
     # Status
-    'info': CHIMERA_COLORS['matrix_green'],
-    'success': CHIMERA_COLORS['matrix_green'],
-    'warning': CHIMERA_COLORS['cyber_yellow'],
-    'error': CHIMERA_COLORS['trauma_red'],
+    'info': NEON_GLASS_COLORS['cyan'],
+    'success': NEON_GLASS_COLORS['green'],
+    'warning': NEON_GLASS_COLORS['yellow'],
+    'error': NEON_GLASS_COLORS['magenta'], # Critical alerts are magenta
 })
 
 # Aliases
-DEFAULT_THEME = CHIMERA_THEME
+DEFAULT_THEME = NEON_GLASS_THEME
 SOLARIZED_THEME = DEFAULT_THEME
 CYBERPUNK_THEME = DEFAULT_THEME
 DEEP_VOID_THEME = DEFAULT_THEME
-NEON_GLASS_THEME = DEFAULT_THEME
 

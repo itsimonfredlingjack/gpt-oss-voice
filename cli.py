@@ -13,7 +13,7 @@ import time
 
 # --- New modular imports ---
 from cli.state import AppState, StateManager, get_state_manager
-from cli.theme import CYBERPUNK_THEME, COLORS
+from cli.theme import CYBERPUNK_THEME
 from cli.avatar import AIAvatar
 from cli.waveform import Waveform
 from cli.layout import make_layout

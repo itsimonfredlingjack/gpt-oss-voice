@@ -119,80 +119,60 @@ SOLARIZED_LIGHT_THEME = Theme({
 
 
 
-
-
-# Chimera - Damaged Terminal Palette
-CHIMERA_COLORS = {
-    # Base - Void
-    'bg_void': '#000000',      # Pure Black
-    'bg_panel': '#050505',     # Near Black
+# Deep Void - Project Zero-G Palette
+DEEP_VOID_COLORS = {
+    # Backgrounds - Void-like
+    'bg_void': '#0a0a0a',      # Main Deep Void background
+    'bg_panel': '#0f0f15',     # Subtle panel background
     
-    # Data Streams
-    'matrix_green': '#00ff41', # Standard Data
-    'cyber_yellow': '#fcee0a', # Warning / Caution
-    'trauma_red': '#ff0055',   # Overheat / Critical
-    'scanline': '#1a1a1a',     # Scanline dark
+    # Accents - Electric Cyan & Neon Purple
+    'cyan': '#00f3ff',         # Electric Cyan (Primary Accent)
+    'purple': '#bf00ff',       # Neon Purple (Secondary Accent)
+    'dim_cyan': '#005f7f',     # Dimmed Cyan (Borders/Low activity)
+    'dim_purple': '#4a0066',   # Dimmed Purple
     
-    # Armor / Structure
-    'armor_light': '#606060',  
-    'armor_dark': '#303030',
-    'armor_edge': '#808080',
-    
-    # Text
-    'text_main': '#c0c0c0',    # CRT Gray
-    'text_bright': '#ffffff',  # Phosphor White
-    'text_dim': '#404040',
+    # Functional
+    'text': '#e0e0e0',         # Main text
+    'dim': '#4a4a50',          # Dim text
+    'danger': '#ff2a2a',       # Error
+    'warning': '#ffbd00',      # Warning
+    'success': '#00ff41',      # Success
 }
 
-CHIMERA_THEME = Theme({
-    # Base
-    'base': CHIMERA_COLORS['text_main'],
-    'dim': CHIMERA_COLORS['text_dim'],
+DEEP_VOID_THEME = Theme({
+    # Base styles
+    'base': DEEP_VOID_COLORS['text'],
+    'dim': DEEP_VOID_COLORS['dim'],
     
-    # Header - Tactical Gauge
-    'header': f"bold {CHIMERA_COLORS['matrix_green']}",
-    'header.label': f"bold {CHIMERA_COLORS['text_main']}",
-    'header.value': f"bold {CHIMERA_COLORS['matrix_green']}",
-    'header.gauge.filled': f"{CHIMERA_COLORS['matrix_green']}",
-    'header.gauge.empty': f"{CHIMERA_COLORS['armor_dark']}",
+    # Header - Live Monitor style
+    'header': f"bold {DEEP_VOID_COLORS['cyan']}",
+    'header.label': f"bold {DEEP_VOID_COLORS['purple']}",
+    'header.value': f"{DEEP_VOID_COLORS['cyan']}",
     
-    # Mecha-Core Avatar
-    'mech.armor': f"{CHIMERA_COLORS['armor_light']}",
-    'mech.armor.dark': f"{CHIMERA_COLORS['armor_dark']}",
-    'mech.edge': f"{CHIMERA_COLORS['armor_edge']}",
-    'mech.eye': f"bold {CHIMERA_COLORS['cyber_yellow']}",      # Sentry Mode
-    'mech.eye.active': f"bold {CHIMERA_COLORS['trauma_red']}", # Thinking/SCAN
-    'mech.mouth': f"{CHIMERA_COLORS['armor_dark']}",
+    # Avatar - Antigravity Particles
+    'avatar.particle': f"{DEEP_VOID_COLORS['cyan']}",
+    'avatar.core': f"bold {DEEP_VOID_COLORS['purple']}",
+    'avatar.thinking': f"bold {DEEP_VOID_COLORS['warning']}",
+    'avatar.talking': f"bold {DEEP_VOID_COLORS['cyan']}",
     
-    # Tactical HUD Borders
-    'border': CHIMERA_COLORS['armor_dark'],
-    'border.active': CHIMERA_COLORS['matrix_green'],
-    'border.danger': CHIMERA_COLORS['trauma_red'],
-    'border.warning': CHIMERA_COLORS['cyber_yellow'],
+    # Command Deck
+    'user_prompt': f"bold {DEEP_VOID_COLORS['cyan']}",
+    'user_input': f"bold {DEEP_VOID_COLORS['text']}",
+    'user_cursor': f"bold {DEEP_VOID_COLORS['purple']}",
     
-    # Command Feed
-    'user_prompt': f"bold {CHIMERA_COLORS['matrix_green']}",
-    'user_input': f"bold {CHIMERA_COLORS['text_bright']}",
-    'user_cursor': f"reverse {CHIMERA_COLORS['matrix_green']}",
-    
-    # Environment Effects
-    'scanline.odd': f"{CHIMERA_COLORS['text_main']} on {CHIMERA_COLORS['bg_void']}",
-    'scanline.even': f"{CHIMERA_COLORS['text_main']} on {CHIMERA_COLORS['scanline']}",
-    'glitch.1': f"bold {CHIMERA_COLORS['trauma_red']}",
-    'glitch.2': f"bold {CHIMERA_COLORS['cyber_yellow']}",
-    'glitch.3': f"bold cyan", # Chromatic Aberration Blue
+    # Borders - Glass-like
+    'border': DEEP_VOID_COLORS['dim_cyan'],
+    'border.active': DEEP_VOID_COLORS['cyan'],
     
     # Status
-    'info': CHIMERA_COLORS['matrix_green'],
-    'success': CHIMERA_COLORS['matrix_green'],
-    'warning': CHIMERA_COLORS['cyber_yellow'],
-    'error': CHIMERA_COLORS['trauma_red'],
+    'info': DEEP_VOID_COLORS['cyan'],
+    'warning': DEEP_VOID_COLORS['warning'],
+    'error': DEEP_VOID_COLORS['danger'],
 })
 
-# Aliases
-DEFAULT_THEME = CHIMERA_THEME
-SOLARIZED_THEME = DEFAULT_THEME
-CYBERPUNK_THEME = DEFAULT_THEME
-DEEP_VOID_THEME = DEFAULT_THEME
-NEON_GLASS_THEME = DEFAULT_THEME
+# Default theme alias
+DEFAULT_THEME = DEEP_VOID_THEME
+SOLARIZED_THEME = DEEP_VOID_THEME  # Compatibility
+CYBERPUNK_THEME = DEEP_VOID_THEME  # Compatibility
+mid_night_tokyo_colors = DEEP_VOID_COLORS # Compatibility
 

@@ -20,7 +20,7 @@ from cli.theme import (
     SOLARIZED_COLORS,
     CYBERPUNK_COLORS,
 )
-from cli.avatar import AIAvatar, BrailleAvatar
+from cli.avatar import AIAvatar, AntigravityAvatar
 from cli.waveform import Waveform
 from cli.layout import make_layout
 

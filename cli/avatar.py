@@ -1,258 +1,164 @@
-"""Spherical Braille AI Avatar with organic animations.
+"""Mecha-Core Unit 734 - High Density Cybernetic Entity.
 
-Provides a geodesic, circular avatar using high-res Braille patterns
-that breathes, rotates, and pulses based on application state.
+Constructed from heavy block elements and Unicode geometry.
 """
 
-from dataclasses import dataclass
-from typing import Optional
 from rich.text import Text
+import time
 import random
 import math
 
-
-class BrailleAvatar:
-    """Organic spherical avatar using Braille patterns.
-
-    The avatar displays different organic animations based on state:
-    - IDLE: Subtle breathing rotation with density shifts
-    - THINKING: Faster rotation with vertical data streams
-    - TALKING: Pulsates in sync with audio waveform
-
-    Attributes:
-        radius: Radius of the sphere in characters (default 5).
+class MechaCoreAvatar:
+    """A heavy robotic head constructed from block characters.
+    
+    States:
+    - IDLE (Sentry): Scanning eye, subtle plate shifts.
+    - THINKING (Trauma): Glitching, red eye, erratic movement.
+    - TALKING (Voice): Jaw movement, sonic rings.
     """
 
-    # Braille density levels (empty to full)
-    BRAILLE_DENSITY = [
-        ' ',      # Empty
-        '⠁', '⠂', '⠄', '⠈', '⠐', '⠠',  # Sparse
-        '⠃', '⠅', '⠉', '⠑', '⠡', '⠰',  # Low density
-        '⡀', '⡁', '⡂', '⡄', '⡈', '⡐',  # Medium-low
-        '⣀', '⣁', '⣂', '⣄', '⣈', '⣐',  # Medium
-        '⣠', '⣡', '⣢', '⣤', '⣨', '⣰',  # Medium-high
-        '⣷', '⣯', '⣿',                    # High density
-    ]
-
-    # Braille patterns for data streams (vertical emphasis)
-    STREAM_PATTERNS = [
-        '⠁', '⠃', '⠇', '⡇', '⣇', '⣧', '⣷', '⣿',
-        '⡿', '⠿', '⠟', '⠛', '⠓', '⠑', '⠁',
-    ]
-
-    def __init__(self, radius: int = 5):
-        """Initialize Braille avatar.
-
-        Args:
-            radius: Radius of the spherical avatar.
-        """
-        self.radius = radius
-        self.width = radius * 2 + 1
-        self.height = radius * 2 + 1
-
-        # Animation state
-        self._rotation = 0.0
-        self._breathing_phase = 0.0
-        self._pulse_scale = 1.0
-        self._stream_offset = 0
-        self._glitch_intensity = 0.0
+    def __init__(self, width: int = 40, height: int = 15):
+        self.width = width
+        self.height = height
+        
+        # ASCII/Unicode Art Structure
+        # 15 lines height
+        self.base_structure = [
+            # 0
+            "      ▄▄████████████████████▄▄      ",
+            # 1
+            "    ▄██████████████████████████▄    ",
+            # 2
+            "   ███▀▀    ▀▀████████▀▀    ▀▀███   ",
+            # 3 (Eye Level) - Index 3
+            "  ███│  ░░░░  │██████│  ░░░░  │███  ", 
+            # 4
+            "  ███│  ░░░░  │██████│  ░░░░  │███  ",
+            # 5
+            "  ███▄        ▄██████▄        ▄███  ",
+            # 6
+            "   ████▄▄  ▄▄██████████▄▄  ▄▄████   ",
+            # 7
+            "   ▀████████████████████████████▀   ",
+            # 8 (Mouth Level) - Index 8
+            "    ▀██████████████████████████▀    ",
+            # 9
+            "     ▀████████▀▀    ▀▀████████▀     ",
+            # 10
+            "      ▀████▀            ▀████▀      ",
+            # 11
+            "       ▀██                ██▀       ",
+            # 12
+            "         ▀█▄            ▄█▀         ",
+            # 13
+            "           ▀█▄▄      ▄▄█▀           ",
+            # 14
+            "             ▀▀▀▀▀▀▀▀▀▀             ",
+        ]
+        
+        self.scan_pos = 0
+        self.scan_dir = 1
+        self.jaw_offset = 0
 
     def render(self, state: str) -> Text:
-        """Render avatar as Rich Text with organic animation.
+        """Render the Mecha-Core."""
+        output = Text()
+        
+        t = time.time()
+        
+        # --- State Logic ---
+        
+        # 1. SCANNER (Eye Movement)
+        if state == "THINKING":
+            # Erratic movement
+            self.scan_pos = random.randint(0, 10)
+            eye_color = "mech.eye.active"
+            base_style = "mech.armor"
+            
+            # Global color shift for overheating
+            if random.random() < 0.3:
+                base_style = "glitch.1"
+                
+        elif state == "IDLE":
+            # Smooth Sentry Scan
+            # Map sine wave to 0-6 range for eye width
+            self.scan_pos = int((math.sin(t * 2) + 1) * 3) 
+            eye_color = "mech.eye"
+            base_style = "mech.armor"
+            
+        else: # TALKING
+            self.scan_pos = 3 # Center
+            eye_color = "mech.eye.active"
+            base_style = "mech.armor"
 
-        Args:
-            state: Current state ('IDLE', 'THINKING', 'TALKING').
+        # 2. JAW (Speaking)
+        jaw_shift = 0
+        if state == "TALKING":
+            # Simple mouth open/close
+            if math.sin(t * 15) > 0:
+                jaw_shift = 1
+        
+        
+        # --- Rendering ---
+        
+        for i, line in enumerate(self.base_structure):
+            row_text = Text(line, style=base_style)
+            
+            # Apply Eye Overlay (Rows 3 & 4)
+            if i in [3, 4]:
+                # Locate the "░░░░" segments and replace with "████" or "▒▒▒▒" based on scan
+                # The visual has two eyes. We'll scan both.
+                # Left Eye area approx char index 8-12
+                # Right Eye area approx char index 24-28
+                
+                # We'll just construct a "Scan Line" overlay
+                # Simple approach: Replace the 'dotted' area with proper scan block
+                
+                plain_line = line
+                # Modify string for scanner
+                if state == "THINKING" or state == "IDLE":
+                     # Scanner overlay logic
+                     # Let's say scanner is a bright block moving L-R inside the eye sockets
+                     left_socket_start = 8
+                     left_socket_width = 4
+                     right_socket_start = 24
+                     right_socket_width = 4
+                     
+                     scan_idx = self.scan_pos % 4
+                     
+                     chars = list(plain_line)
+                     # Left Eye
+                     if chars[left_socket_start + scan_idx] == '░':
+                         chars[left_socket_start + scan_idx] = '█'
+                     # Right Eye
+                     if chars[right_socket_start + scan_idx] == '░':
+                         chars[right_socket_start + scan_idx] = '█'
+                         
+                     row_text = Text("".join(chars), style=base_style)
+                     
+                     # Highlight the eye pixels specifically
+                     row_text.stylize(eye_color, left_socket_start, left_socket_start + 4)
+                     row_text.stylize(eye_color, right_socket_start, right_socket_start + 4)
 
-        Returns:
-            Rich Text object with styled spherical avatar.
-        """
-        if state == 'IDLE':
-            return self._render_idle()
-        elif state == 'THINKING':
-            return self._render_thinking()
-        elif state == 'TALKING':
-            return self._render_talking()
-        else:
-            return self._render_idle()
+            # Apply Jaw Movement (Rows 8+)
+            # If jaw is open, we push these rows down or modify them
+            # Since we can't easily "push" locally in terminal without clearing,
+            # We will modify the mouth area texture
+            if i == 9 and jaw_shift > 0:
+                 # Open mouth visual
+                 row_text = Text("     ▀████████▄▄    ▄▄████████▀     ", style="mech.mouth")
+            
+            # Glitch effect (Random char replacement logic for structural trauma)
+            if state == "THINKING" and random.random() < 0.1:
+                # Corrupt this line
+                row_text = Text("".join([random.choice("█▓▒░#") for _ in line]), style="glitch.1")
 
-    def _render_idle(self) -> Text:
-        """Render idle state: gentle breathing and rotation."""
-        # Update breathing animation
-        self._breathing_phase += 0.05
-        self._rotation += 0.02
+            output.append(row_text)
+            output.append("\n")
+            
+        return output
 
-        # Breathing effect: subtle scale oscillation
-        breath_scale = 1.0 + 0.1 * math.sin(self._breathing_phase)
-
-        text = Text()
-
-        for y in range(self.height):
-            line = Text()
-            for x in range(self.width):
-                # Calculate distance from center
-                dx = x - self.radius
-                dy = (y - self.radius) * 1.8  # Adjust for character aspect ratio
-                distance = math.sqrt(dx*dx + dy*dy) / breath_scale
-
-                # Sphere surface calculation
-                if distance < self.radius:
-                    # Calculate depth (z-coordinate)
-                    z = math.sqrt(max(0, self.radius*self.radius - distance*distance))
-
-                    # Add rotation for organic motion
-                    angle = math.atan2(dy, dx) + self._rotation
-
-                    # Calculate density based on depth and rotation
-                    density = (z / self.radius) * 0.8 + 0.2
-                    density *= (1.0 + 0.2 * math.sin(angle * 3))
-
-                    # Add subtle noise
-                    density += random.uniform(-0.05, 0.05)
-                    density = max(0, min(1, density))
-
-                    # Map to Braille character
-                    braille_idx = int(density * (len(self.BRAILLE_DENSITY) - 1))
-                    char = self.BRAILLE_DENSITY[braille_idx]
-
-                    # Supreme design: Depth-based gradient coloring
-                    # z/depth determines brightness - closer = brighter
-                    depth_ratio = z / self.radius
-                    if depth_ratio > 0.8:
-                        style = 'avatar.core'  # Blinding core - brightest
-                    elif depth_ratio > 0.5:
-                        style = 'avatar.bright'  # Bright surface - cyan
-                    elif depth_ratio > 0.3:
-                        style = 'avatar.medium'  # Medium depth - dimmer cyan
-                    else:
-                        style = 'avatar.dim'  # Dim edges - fade to dark
-
-                    line.append(char, style=style)
-                else:
-                    line.append(' ')
-
-            text.append(line)
-            text.append('\n')
-
-        return text
-
-    def _render_thinking(self) -> Text:
-        """Render thinking state: faster rotation with data streams."""
-        # Update thinking animation - faster rotation
-        self._rotation += 0.08
-        self._stream_offset = (self._stream_offset + 1) % len(self.STREAM_PATTERNS)
-
-        text = Text()
-
-        for y in range(self.height):
-            line = Text()
-            for x in range(self.width):
-                dx = x - self.radius
-                dy = (y - self.radius) * 1.8
-                distance = math.sqrt(dx*dx + dy*dy)
-
-                if distance < self.radius:
-                    z = math.sqrt(max(0, self.radius*self.radius - distance*distance))
-                    angle = math.atan2(dy, dx) + self._rotation
-
-                    # Base density
-                    density = (z / self.radius) * 0.8 + 0.2
-
-                    # Add vertical data stream effect
-                    stream_phase = (y + self._stream_offset) % len(self.STREAM_PATTERNS)
-                    if abs(dx) < 2 and random.random() > 0.3:  # Central vertical stream
-                        char = self.STREAM_PATTERNS[stream_phase]
-                        style = 'avatar.thinking'
-                    else:
-                        density *= (1.0 + 0.3 * math.sin(angle * 5))
-                        density = max(0, min(1, density))
-                        braille_idx = int(density * (len(self.BRAILLE_DENSITY) - 1))
-                        char = self.BRAILLE_DENSITY[braille_idx]
-
-                        if density > 0.6:
-                            style = 'avatar.thinking'
-                        else:
-                            style = 'dim'
-
-                    line.append(char, style=style)
-                else:
-                    line.append(' ')
-
-            text.append(line)
-            text.append('\n')
-
-        return text
-
-    def _render_talking(self) -> Text:
-        """Render talking state: pulsating sphere."""
-        # Update pulse animation
-        self._breathing_phase += 0.2
-        self._rotation += 0.05
-
-        # Strong pulse effect
-        pulse = 0.5 + 0.5 * math.sin(self._breathing_phase)
-        self._pulse_scale = 0.8 + 0.4 * pulse
-
-        text = Text()
-
-        for y in range(self.height):
-            line = Text()
-            for x in range(self.width):
-                dx = x - self.radius
-                dy = (y - self.radius) * 1.8
-                distance = math.sqrt(dx*dx + dy*dy) / self._pulse_scale
-
-                if distance < self.radius:
-                    z = math.sqrt(max(0, self.radius*self.radius - distance*distance))
-                    angle = math.atan2(dy, dx) + self._rotation
-
-                    # Density with pulse modulation
-                    density = (z / self.radius) * 0.9 + 0.1
-                    density *= (1.0 + 0.3 * math.sin(angle * 4 + self._breathing_phase))
-
-                    # Add pulse rings
-                    ring_dist = abs(distance - self.radius * 0.7)
-                    if ring_dist < 0.5:
-                        density = min(1.0, density + 0.3 * (1.0 - ring_dist * 2))
-
-                    density = max(0, min(1, density))
-                    braille_idx = int(density * (len(self.BRAILLE_DENSITY) - 1))
-                    char = self.BRAILLE_DENSITY[braille_idx]
-
-                    # Enhanced talking state with pulse effect
-                    pulse_mod = 0.3 * math.sin(self._breathing_phase * 2)
-                    if density > 0.8:
-                        style = 'avatar.pulse'  # Pulsing cyan core
-                    elif density > 0.6:
-                        style = 'waveform.active'  # Bold cyan
-                    elif density > 0.4:
-                        style = 'avatar.frame'
-                    else:
-                        style = 'dim'
-
-                    line.append(char, style=style)
-                else:
-                    line.append(' ')
-
-            text.append(line)
-            text.append('\n')
-
-        return text
-
-    def set_pulse_scale(self, scale: float) -> None:
-        """Set pulse scale from external source (e.g., audio amplitude).
-
-        Args:
-            scale: Pulse scale factor (0.5-1.5 recommended).
-        """
-        self._pulse_scale = max(0.5, min(1.5, scale))
-
-    def reset(self) -> None:
-        """Reset animation state."""
-        self._rotation = 0.0
-        self._breathing_phase = 0.0
-        self._pulse_scale = 1.0
-        self._stream_offset = 0
-
-
-# Legacy compatibility alias
-AIAvatar = BrailleAvatar
+# Alias
+AIAvatar = MechaCoreAvatar
+TesseractAvatar = MechaCoreAvatar # Compat
+AntigravityAvatar = MechaCoreAvatar # Compat

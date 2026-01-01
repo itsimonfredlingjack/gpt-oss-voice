@@ -1,10 +1,9 @@
-"""THE CORE - Project Chimera Interface.
+"""THE CORE - Project Tesseract Interface.
 
-A Heavy Metal Cybernetic Command Center.
-Features Mecha-Core Unit 734 and Digital Noise simulation.
+A 4D Command Center for the Neural Link.
+Features a real-time Tesseract Engine, Orbital HUD, and Neon Glass aesthetics.
 
-    ☢ SYSTEM FAILURE IMMINENT ☢
-    ☢ EMERGENCY PROTOCOLS ACTIVE ☢
+    ❖ TESSERACT ENGINE ONLINE ❖
 """
 
 import asyncio
@@ -26,15 +25,14 @@ from rich.markdown import Markdown
 
 # Local imports
 from cli.state import StateManager, AppState, get_state_manager
-from cli.theme import CHIMERA_THEME # Project Chimera Theme
-from cli.avatar import MechaCoreAvatar
+from cli.theme import NEON_GLASS_THEME
+from cli.avatar import TesseractAvatar
 from cli.layout import (
     make_layout,
     make_header,
     make_command_deck,
     make_sidebar_panel,
     make_log_panel,
-    make_dummy_panel,
 )
 from cli.raw_input import RawInputHandler, InputEvent, InputEventType
 from cli.renderer import StreamingRenderer
@@ -58,14 +56,14 @@ try:
 except ImportError:
     def ask_brain(prompt: str) -> str:
         time.sleep(1.5)
-        return f"Processing trauma response to: {prompt}"
+        return f"Neural response to: {prompt}"
 
 
 # --- Configuration ---
 @dataclass
 class AppConfig:
     """Application configuration."""
-    fps: int = 20
+    fps: int = 25 # High FPS for smooth 3D rotation
     model_name: str = "Tesseract v4.0"
     output_device: str = "Google Home"
     max_history: int = 50
@@ -84,20 +82,20 @@ class Message:
 
 # --- Main Application ---
 class CLIApp:
-    """The Core - Project Chimera Terminal."""
+    """The Core - Project Tesseract Terminal."""
 
     BOOT_FRAMES = [
-        "/// SYSTEM CRITICAL ///",
-        "/// CORE INTEGRITY 45% ///",
-        "/// REBOOTING MECHA-UNIT 734 ///",
-        "/// FEED ESTABLISHED ///",
+        "❖ INITIALIZING TESSERACT ENGINE ❖",
+        "❖ LOADING 4D GEOMETRY ❖",
+        "❖ ESTABLISHING ORBITAL UPLINK ❖",
+        "❖ NEURAL LINK OPERATIONAL ❖",
     ]
 
     def __init__(self, config: Optional[AppConfig] = None):
         self.config = config or AppConfig()
         
-        # Use Chimera theme
-        self.console = Console(theme=CHIMERA_THEME, force_terminal=True)
+        # Use Neon Glass theme
+        self.console = Console(theme=NEON_GLASS_THEME, force_terminal=True)
         
         logging.basicConfig(
             filename="core.log",
@@ -109,7 +107,7 @@ class CLIApp:
 
         # Core components
         self.state = get_state_manager()
-        self.avatar = MechaCoreAvatar(width=30, height=15)
+        self.avatar = TesseractAvatar(width=30, height=15)
         self.layout = make_layout()
         self.input_handler = RawInputHandler()
         self.current_input = ""
@@ -166,7 +164,7 @@ class CLIApp:
         for frame in self.BOOT_FRAMES:
             self.console.print()
             self.console.print(
-                Align.center(Text(frame, style="glitch.1")),
+                Align.center(Text(frame, style="header")),
                 highlight=False
             )
             await asyncio.sleep(0.4)
@@ -297,7 +295,7 @@ class CLIApp:
     def _update_layout(self) -> None:
         state_name = self.state.state_name
         
-        # --- 1. Top Bar: Tactical Gauge ---
+        # --- 1. Top Bar: Orbital Feed ---
         now = time.time()
         time_delta = now - self._last_net_time
         if time_delta > 1.0:
@@ -319,14 +317,13 @@ class CLIApp:
             )
         )
         
-        # --- 2. Sidebar: Mecha-Core (Right side) ---
+        # --- 2. Sidebar: Tesseract Engine (Right side) ---
         avatar_text = self.avatar.render(state_name)
         self.layout["sidebar"].update(
              make_sidebar_panel(avatar_text, state_name)
         )
-
         
-        # --- 3. Footer: Command Feed ---
+        # --- 3. Footer: Command Link ---
         if state_name == "THINKING":
             deck_state = "THINKING"
         elif state_name == "TALKING":
@@ -345,107 +342,86 @@ class CLIApp:
             )
         )
         
-        # --- 4. Main Log: Digital Noise Feed ---
-        log_content = self._render_scanlined_history()
+        # --- 4. Main Log: Decaying Data Feed ---
         self.layout["log"].update(
-            make_log_panel(log_content)
-        )
-        
-        # --- 5. Dummy Data Stream (Left Side) ---
-        self.layout["dummy_L"].update(
-            make_dummy_panel(self._generate_dummy_hex())
+            make_log_panel(self._render_decaying_history())
         )
 
-    def _generate_dummy_hex(self) -> Text:
-        """Generate scrolling hex dump."""
-        # Visual filler to make it look complex
-        lines = []
-        rows = 15 # Approx height of main panel
-        
-        # We scroll by offset based on frame count
-        offset = int(self._frame_count / 2)
-        
-        for i in range(rows):
-            val = (offset + i) * 12347
-            hex_str = f"{val & 0xFFFF:04X} {val & 0xFF:02X} {val & 0xF0:02X}"
-            
-            # Random highlight
-            style = "dim"
-            if random.random() < 0.1:
-                style = "mech.eye" # yellow
-            elif random.random() < 0.05:
-                style = "glitch.1" # red
-                
-            lines.append(Text(hex_str, style=style))
-            
-        return Group(*lines)
-
-    def _render_scanlined_history(self) -> Group:
-        """Render history with Scanline & Aberration effects."""
+    def _render_decaying_history(self) -> Group:
+        """Render conversation history with Decay Effect."""
         elements = []
-        visible_history = list(self.history)[-6:] # Show fewer lines, larger text usually
         
-        for msg in visible_history:
-             if msg.role == 'user':
+        # We only show the last 8 messages to keep the "Feed" look clean
+        visible_history = list(self.history)[-8:]
+        total_msgs = len(visible_history)
+        
+        for i, msg in enumerate(visible_history):
+            # Calculate decay level based on age (position in list)
+            # Newest = low index (if reversed) or high index (if normal)
+            # Here: index 0 = oldest visible, index N = newest
+            
+            age = total_msgs - 1 - i
+            decay_level = min(age, 4)
+            style = f"text.decay.{decay_level}"
+            
+            if msg.role == 'user':
                 text = Text()
-                text.append(">> ", style="dim")
+                text.append("❯ ", style="dim")
                 text.append(msg.content, style="user_input")
                 elements.append(text)
                 elements.append(Text(" ")) 
                 
-             elif msg.role == 'ai':
+            elif msg.role == 'ai':
                 content = msg.content
                 
+                # Apply corruption to very old messages
+                if decay_level >= 3:
+                     content = self._corrupt_text(content, decay_level)
+
+                # Use streaming text if last message
                 is_last = msg is self.history[-1] if self.history else False
                 if is_last and self.renderer.is_streaming:
                      content = self.renderer.current_text
-                     content += "█" 
-
-                # Apply Chromatic Aberration Simulation
-                # Since we can't do pixel shift, we randomly color chars Cyan/Red
-                t = Text()
-                for char in content:
-                    style = "text.main"
-                    # 5% chance of aberration
-                    rand = random.random()
-                    if rand < 0.02:
-                        style = "glitch.3" # Cyan
-                    elif rand < 0.04:
-                        style = "glitch.1" # Red
-                    
-                    t.append(char, style=style)
+                     content += "█"
+                     style = "text.decay.0" # Current message is always fresh
                 
+                # Render with decay style
+                t = Text(content, style=style)
                 elements.append(t)
-                elements.append(Text("----------------", style="dim"))
+                elements.append(Text("────────────────", style="dim"))
                 elements.append(Text(" "))
         
         if not elements:
             t = Text()
-            t.append("\n")
-            t.append("   NO SIGNAL", style="dim")
+            t.append("\n\n")
+            t.append("   AWAITING VECTOR INPUT...", style="dim")
             return Group(t)
-
-        
-        # Scanline Simulation (Post-processing on blocks isn't easy in Rich, 
-        # so we apply it to the text lines themselves by using alternating styles?
-        # Actually, alternating background colors for the whole panel is hard.
-        # We'll stick to the text aberration for now.)
             
         return Group(*elements)
+
+    def _corrupt_text(self, text: str, level: int) -> str:
+        """Randomly corrupt characters for decay effect."""
+        # This is purely visual, performance might be a concern if text is huge
+        # But we only do it for old messages
+        
+        # Deterministic corruption based on text hash to avoid localized flickering
+        # unless we want flickering "digital rot"
+        
+        # Let's do flickering rot
+        chars = list(text)
+        corruption_chance = 0.05 * (level - 2) # Level 3 = 5%, Level 4 = 10%
+        
+        for i in range(len(chars)):
+            if chars[i] != " " and random.random() < corruption_chance:
+                chars[i] = random.choice([".", ",", ";", "0", "1", "x"])
+                
+        return "".join(chars)
 
     def _shutdown(self) -> None:
         self.running = False
         self.console.clear()
-        self.console.print("SYSTEM TERMINATED", style="bold red")
+        self.console.print("UPLINK SEVERED", style="bold magenta")
 
-
-# --- Backward Compatibility ---
-def run_cli() -> None:
-    app = CLIApp()
-    app.run()
-
-if __name__ == "__main__":
-    run_cli()
 
 # --- Backward Compatibility ---
 def run_cli() -> None:

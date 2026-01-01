@@ -1,10 +1,11 @@
-"""THE CORE - Project Chimera Interface.
+"""THE CORE - Project Zero-G Interface.
 
-A Heavy Metal Cybernetic Command Center.
-Features Mecha-Core Unit 734 and Digital Noise simulation.
+A neo-tokyo inspired command center for interacting with
+the local AI brain. Features non-blocking animations,
+streaming text output, and a visually striking aesthetic.
 
-    ☢ SYSTEM FAILURE IMMINENT ☢
-    ☢ EMERGENCY PROTOCOLS ACTIVE ☢
+    ◢◤ THE CORE ◥◣
+    Vision: Deep Void
 """
 
 import asyncio
@@ -12,7 +13,7 @@ import time
 import sys
 import logging
 import random
-import psutil
+import psutil # Added for Live Monitor
 from collections import deque
 from typing import Optional, List
 from dataclasses import dataclass, field
@@ -26,47 +27,49 @@ from rich.markdown import Markdown
 
 # Local imports
 from cli.state import StateManager, AppState, get_state_manager
-from cli.theme import CHIMERA_THEME # Project Chimera Theme
-from cli.avatar import MechaCoreAvatar
+from cli.theme import DEEP_VOID_THEME
+from cli.avatar import AntigravityAvatar
 from cli.layout import (
     make_layout,
     make_header,
     make_command_deck,
     make_sidebar_panel,
     make_log_panel,
-    make_dummy_panel,
 )
 from cli.raw_input import RawInputHandler, InputEvent, InputEventType
 from cli.renderer import StreamingRenderer
 
 
-# --- External integrations ---
+# --- External integrations (with fallbacks) ---
 try:
     from speak import GoogleHomeSpeaker, speak
 except ImportError:
     class GoogleHomeSpeaker:
+        """Fallback speaker for testing."""
         def speak(self, text: str) -> None:
             time.sleep(len(text) * 0.05)
         def stop(self) -> None:
             pass
     
     def speak(text: str) -> None:
+        """Fallback: simulate speaking delay."""
         time.sleep(len(text) * 0.05)
 
 try:
     from brain import ask_brain
 except ImportError:
     def ask_brain(prompt: str) -> str:
+        """Fallback: mock AI response."""
         time.sleep(1.5)
-        return f"Processing trauma response to: {prompt}"
+        return f"Neural response to: {prompt}"
 
 
 # --- Configuration ---
 @dataclass
 class AppConfig:
     """Application configuration."""
-    fps: int = 20
-    model_name: str = "Tesseract v4.0"
+    fps: int = 20 # Higher FPS for smooth particles
+    model_name: str = "GPT-OSS"
     output_device: str = "Google Home"
     max_history: int = 50
     stream_text: bool = True
@@ -77,28 +80,38 @@ class AppConfig:
 @dataclass
 class Message:
     """A conversation message."""
-    role: str
+    role: str  # 'user' or 'ai'
     content: str
     timestamp: float = field(default_factory=time.time)
 
 
 # --- Main Application ---
 class CLIApp:
-    """The Core - Project Chimera Terminal."""
+    """The Core - Project Zero-G Terminal.
+
+    Orchestrates the terminal UI with non-blocking input,
+    particle avatar, and streaming AI responses.
+    """
 
     BOOT_FRAMES = [
-        "/// SYSTEM CRITICAL ///",
-        "/// CORE INTEGRITY 45% ///",
-        "/// REBOOTING MECHA-UNIT 734 ///",
-        "/// FEED ESTABLISHED ///",
+        "◢ INITIALIZING NEURAL LINK ◣",
+        "◢◤ SYNCING ZERO-G PROTOCOLS ◥◣",
+        "◢◤◢ LOADING NEBULA ENGINE ◣◥◣",
+        "◢◤◢◤ THE CORE ONLINE ◥◣◥◣",
     ]
 
     def __init__(self, config: Optional[AppConfig] = None):
+        """Initialize the application.
+
+        Args:
+            config: Optional configuration override.
+        """
         self.config = config or AppConfig()
         
-        # Use Chimera theme
-        self.console = Console(theme=CHIMERA_THEME, force_terminal=True)
+        # Use Deep Void theme
+        self.console = Console(theme=DEEP_VOID_THEME, force_terminal=True)
         
+        # Set up logging
         logging.basicConfig(
             filename="core.log",
             level=logging.INFO,
@@ -109,12 +122,13 @@ class CLIApp:
 
         # Core components
         self.state = get_state_manager()
-        self.avatar = MechaCoreAvatar(width=30, height=15)
+        self.avatar = AntigravityAvatar(width=30, height=15)
         self.layout = make_layout()
         self.input_handler = RawInputHandler()
         self.current_input = ""
         self.renderer = StreamingRenderer()
         
+        # Voice-first: Google Home speaker instance
         try:
             self.speaker = GoogleHomeSpeaker()
         except Exception:
@@ -128,7 +142,9 @@ class CLIApp:
         self.show_prompt = True
         self.boot_complete = False
 
+        # Glitch effect counter
         self._frame_count = 0
+        self._glitch_chance = 0.005
         
         # Network tracking
         self._last_net_io = psutil.net_io_counters() if hasattr(psutil, 'net_io_counters') else None
@@ -137,7 +153,7 @@ class CLIApp:
         self._net_recv_speed = 0.0
 
     def run(self) -> None:
-        """Main application entry point."""
+        """Main application entry point with guaranteed terminal cleanup."""
         try:
             asyncio.run(self._async_main())
         except KeyboardInterrupt:
@@ -153,10 +169,12 @@ class CLIApp:
                 pass
 
     async def _async_main(self) -> None:
+        """Async main entry point."""
         await self._run_boot_sequence()
         await self._run_main_loop()
 
     async def _run_boot_sequence(self) -> None:
+        """Display boot animation."""
         if not self.config.boot_sequence:
             self.boot_complete = True
             return
@@ -166,7 +184,7 @@ class CLIApp:
         for frame in self.BOOT_FRAMES:
             self.console.print()
             self.console.print(
-                Align.center(Text(frame, style="glitch.1")),
+                Align.center(Text(frame, style="header")),
                 highlight=False
             )
             await asyncio.sleep(0.4)
@@ -175,6 +193,7 @@ class CLIApp:
         self.boot_complete = True
 
     async def _run_main_loop(self) -> None:
+        """Main render and input loop using asyncio."""
         refresh_rate = 1.0 / self.config.fps
 
         self.input_handler.start()
@@ -210,16 +229,21 @@ class CLIApp:
             self.input_handler.stop()
 
     def _process_state(self) -> None:
+        """Process current state logic with UX feedback."""
         current = self.state.state
 
         if current == AppState.IDLE:
             self.input_handler.enable()
+        elif current in [AppState.THINKING, AppState.TALKING]:
+             # We might want to allow interruption, but for now disable input
+             pass
         elif current == AppState.ERROR:
             self.input_handler.enable()
             if self.state.duration > 5.0:
                 self.state.force_state(AppState.IDLE)
 
     def _process_input(self) -> None:
+        """Process input events from handler (synchronous)."""
         max_events = 10
         event_count = 0
         
@@ -253,11 +277,13 @@ class CLIApp:
         self.current_input = self.input_handler.input_text
 
     async def _handle_user_input(self, text: str) -> None:
+        """Handle user text input."""
         self.history.append(Message(role='user', content=text))
         self.state.transition_to(AppState.THINKING)
         asyncio.create_task(self._brain_worker(text))
 
     async def _brain_worker(self, prompt: str) -> None:
+        """Background worker that queries the AI."""
         try:
             loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(None, ask_brain, prompt)
@@ -267,6 +293,7 @@ class CLIApp:
             self.state.set_error(str(e))
 
     async def _process_responses(self) -> None:
+        """Check for and process AI responses."""
         try:
             response = self.response_queue.get_nowait()
         except asyncio.QueueEmpty:
@@ -281,6 +308,7 @@ class CLIApp:
         asyncio.create_task(self._speak_worker(response))
 
     async def _speak_worker(self, text: str) -> None:
+        """Background worker that speaks the response."""
         try:
             loop = asyncio.get_running_loop()
             if self.speaker:
@@ -295,16 +323,19 @@ class CLIApp:
             self.state.force_state(AppState.IDLE)
 
     def _update_layout(self) -> None:
+        """Update all layout components."""
         state_name = self.state.state_name
         
-        # --- 1. Top Bar: Tactical Gauge ---
+        # --- 1. Top Bar: Live Monitor ---
+        # Calculate network speed
         now = time.time()
         time_delta = now - self._last_net_time
-        if time_delta > 1.0:
+        if time_delta > 1.0: # Update every second
             net_io = psutil.net_io_counters()
             if self._last_net_io:
                 bytes_sent = net_io.bytes_sent - self._last_net_io.bytes_sent
                 bytes_recv = net_io.bytes_recv - self._last_net_io.bytes_recv
+                # Convert to MB/s
                 self._net_sent_speed = (bytes_sent / 1024 / 1024) / time_delta
                 self._net_recv_speed = (bytes_recv / 1024 / 1024) / time_delta
             self._last_net_io = net_io
@@ -319,14 +350,14 @@ class CLIApp:
             )
         )
         
-        # --- 2. Sidebar: Mecha-Core (Right side) ---
+        # --- 2. Sidebar: The Nebula ---
         avatar_text = self.avatar.render(state_name)
         self.layout["sidebar"].update(
-             make_sidebar_panel(avatar_text, state_name)
+             make_sidebar_panel(avatar_text)
         )
-
         
-        # --- 3. Footer: Command Feed ---
+        # --- 3. Footer: Command Deck ---
+        # Determine prompt state for visual feedback
         if state_name == "THINKING":
             deck_state = "THINKING"
         elif state_name == "TALKING":
@@ -334,6 +365,7 @@ class CLIApp:
         else:
             deck_state = "IDLE"
 
+        # Blink logic for cursor
         show_cursor = (self._frame_count % 15 < 8) and (deck_state == "IDLE")
 
         self.layout["footer"].update(
@@ -345,107 +377,52 @@ class CLIApp:
             )
         )
         
-        # --- 4. Main Log: Digital Noise Feed ---
-        log_content = self._render_scanlined_history()
+        # --- 4. Main Log: Transmissions ---
         self.layout["log"].update(
-            make_log_panel(log_content)
-        )
-        
-        # --- 5. Dummy Data Stream (Left Side) ---
-        self.layout["dummy_L"].update(
-            make_dummy_panel(self._generate_dummy_hex())
+            make_log_panel(self._render_history())
         )
 
-    def _generate_dummy_hex(self) -> Text:
-        """Generate scrolling hex dump."""
-        # Visual filler to make it look complex
-        lines = []
-        rows = 15 # Approx height of main panel
-        
-        # We scroll by offset based on frame count
-        offset = int(self._frame_count / 2)
-        
-        for i in range(rows):
-            val = (offset + i) * 12347
-            hex_str = f"{val & 0xFFFF:04X} {val & 0xFF:02X} {val & 0xF0:02X}"
-            
-            # Random highlight
-            style = "dim"
-            if random.random() < 0.1:
-                style = "mech.eye" # yellow
-            elif random.random() < 0.05:
-                style = "glitch.1" # red
-                
-            lines.append(Text(hex_str, style=style))
-            
-        return Group(*lines)
-
-    def _render_scanlined_history(self) -> Group:
-        """Render history with Scanline & Aberration effects."""
+    def _render_history(self) -> Group:
+        """Render conversation history."""
         elements = []
-        visible_history = list(self.history)[-6:] # Show fewer lines, larger text usually
         
-        for msg in visible_history:
-             if msg.role == 'user':
+        for msg in self.history:
+            if msg.role == 'user':
                 text = Text()
-                text.append(">> ", style="dim")
+                text.append("❯ ", style="dim")
                 text.append(msg.content, style="user_input")
                 elements.append(text)
-                elements.append(Text(" ")) 
+                elements.append(Text(" ")) # Spacer
                 
-             elif msg.role == 'ai':
-                content = msg.content
+            elif msg.role == 'ai':
+                text = Text()
                 
+                # Use streaming text if last message
                 is_last = msg is self.history[-1] if self.history else False
                 if is_last and self.renderer.is_streaming:
                      content = self.renderer.current_text
-                     content += "█" 
-
-                # Apply Chromatic Aberration Simulation
-                # Since we can't do pixel shift, we randomly color chars Cyan/Red
-                t = Text()
-                for char in content:
-                    style = "text.main"
-                    # 5% chance of aberration
-                    rand = random.random()
-                    if rand < 0.02:
-                        style = "glitch.3" # Cyan
-                    elif rand < 0.04:
-                        style = "glitch.1" # Red
+                     content += "█" # Cursor
+                else:
+                    content = msg.content
                     
-                    t.append(char, style=style)
-                
-                elements.append(t)
-                elements.append(Text("----------------", style="dim"))
+                elements.append(Markdown(content))
+                elements.append(Text("━━━━━━━━━━━━━━━━", style="dim"))
                 elements.append(Text(" "))
         
         if not elements:
+            # Empty state
             t = Text()
-            t.append("\n")
-            t.append("   NO SIGNAL", style="dim")
+            t.append("\n\n")
+            t.append("   WAITING FOR INPUT...", style="dim")
             return Group(t)
-
-        
-        # Scanline Simulation (Post-processing on blocks isn't easy in Rich, 
-        # so we apply it to the text lines themselves by using alternating styles?
-        # Actually, alternating background colors for the whole panel is hard.
-        # We'll stick to the text aberration for now.)
             
         return Group(*elements)
 
     def _shutdown(self) -> None:
+        """Clean shutdown sequence."""
         self.running = False
         self.console.clear()
-        self.console.print("SYSTEM TERMINATED", style="bold red")
-
-
-# --- Backward Compatibility ---
-def run_cli() -> None:
-    app = CLIApp()
-    app.run()
-
-if __name__ == "__main__":
-    run_cli()
+        self.console.print("SYSTEM OFFLINE", style="bold red")
 
 # --- Backward Compatibility ---
 def run_cli() -> None:
