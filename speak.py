@@ -129,16 +129,116 @@ class GoogleHomeSpeaker:
                         flush=True,
                     )
 
+                    logger.debug(
+                        "Starting chunk playback",
+                        extra={
+                            "chunk": idx,
+                            "total_chunks": len(chunks),
+                            "chunk_length": len(chunk),
+                            "device": self.device_name,
+                        },
+                    )
+
                     self.mc.play_media(tts_url, "audio/mp3")
                     self.mc.block_until_active()
 
-                    # Block while playing, allowing interruption.
-                    while not self._stop_event.is_set():
+                    # Wait for media to actually start playing (PLAYING state)
+                    # This ensures the chunk has actually started, not just queued
+                    max_wait_playing = 3.0  # Max wait time for playback to start
+                    wait_start = time.time()
+                    started_playing = False
+                    
+                    while time.time() - wait_start < max_wait_playing:
+                        if self._stop_event.is_set():
+                            break
                         time.sleep(0.1)
                         self.mc.update_status()
-                        if self.mc.status.player_state == "IDLE":
+                        state = self.mc.status.player_state
+                        
+                        if state == "PLAYING":
+                            started_playing = True
+                            logger.debug(
+                                "Chunk started playing",
+                                extra={
+                                    "chunk": idx,
+                                    "device": self.device_name,
+                                },
+                            )
                             break
+                        elif state == "IDLE":
+                            # If IDLE right after block_until_active, might be an error
+                            # Wait a bit and check again
+                            time.sleep(0.2)
+                            self.mc.update_status()
+                            state = self.mc.status.player_state
+                            if state == "PLAYING":
+                                started_playing = True
+                                logger.debug(
+                                    "Chunk started playing (after IDLE check)",
+                                    extra={
+                                        "chunk": idx,
+                                        "device": self.device_name,
+                                    },
+                                )
+                                break
+                            elif state == "IDLE":
+                                # Still IDLE - might be an error, but continue anyway
+                                logger.warning(
+                                    "Chunk still IDLE after block_until_active",
+                                    extra={
+                                        "chunk": idx,
+                                        "device": self.device_name,
+                                    },
+                                )
+                                # Give it one more chance
+                                time.sleep(0.3)
+                                self.mc.update_status()
+                                if self.mc.status.player_state == "PLAYING":
+                                    started_playing = True
+                                    break
+
+                    if not started_playing and not self._stop_event.is_set():
+                        logger.warning(
+                            "Chunk did not start playing within timeout",
+                            extra={
+                                "chunk": idx,
+                                "device": self.device_name,
+                                "final_state": self.mc.status.player_state,
+                            },
+                        )
+
+                    # Wait until chunk is complete (IDLE after PLAYING)
+                    # This ensures the audio has actually finished playing
+                    if started_playing:
+                        while not self._stop_event.is_set():
+                            time.sleep(0.1)
+                            self.mc.update_status()
+                            state = self.mc.status.player_state
+                            
+                            if state == "IDLE":
+                                # Verify we actually played (not just IDLE from start)
+                                # Wait a bit extra to ensure audio is completely finished
+                                time.sleep(0.3)
+                                logger.debug(
+                                    "Chunk playback completed",
+                                    extra={
+                                        "chunk": idx,
+                                        "device": self.device_name,
+                                    },
+                                )
+                                break
+                    else:
+                        # If chunk didn't start playing, wait a bit anyway
+                        # before trying next chunk
+                        time.sleep(0.5)
+
                     played = idx
+
+                    # Small delay between chunks to ensure device is ready
+                    # This prevents race conditions where next chunk starts
+                    # before previous one is fully finished
+                    if idx < len(chunks) and not self._stop_event.is_set():
+                        time.sleep(0.2)
 
                 if self._stop_event.is_set():
                     logger.info("TTS interrupted by user")
