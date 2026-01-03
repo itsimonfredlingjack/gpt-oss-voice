@@ -1,57 +1,312 @@
 # Cursor Rules for Google Home Hack / GPT-OSS Voice
 
 ## Project Context
-This is a voice-first AI assistant CLI that connects Ollama (local LLM) with Google Home speakers via Chromecast. The main interface is "The Core CLI" - a Rich-based terminal UI.
 
-## Key Commands
-- `python -m cli.app` - Run the main CLI interface
-- `pytest` - Run all tests
-- `pytest --cov=. --cov-report=html` - Run tests with coverage
-- `python speak.py "text"` - Test TTS directly
-- `python brain.py` - Test AI brain directly
+This is a voice-first AI assistant CLI that connects Ollama (local LLM) with Google Home speakers via Chromecast. The main interface is **"The Core CLI"** - a Rich-based terminal UI with animated avatar, waveform visualization, and non-blocking input.
 
-## Architecture
-- **cli/app.py**: Main application with Rich Live, state machine, async I/O
-- **cli/raw_input.py**: Custom input handler with escape sequence support
-- **speak.py**: GoogleHomeSpeaker class for TTS via Chromecast
-- **brain.py**: Ollama API wrapper
-- **cli/state.py**: StateManager for IDLE/THINKING/TALKING/ERROR states
-- **cli/avatar.py**: BrailleAvatar with depth-based coloring
-- **cli/waveform.py**: Animated waveform visualization
-- **cli/theme.py**: Rich themes (Midnight Tokyo default)
+**Key Purpose**: Develop various systems through "hacking" Google Nest Hub and Google Minis using GPT-OSS (via Ollama) as the AI model. The system enables voice-activated AI interactions through Google Home devices.
 
-## Voice-First Features
-- Speaking indicator in footer shows current TTS text
-- Ctrl+C interrupts speaking during TALKING state
-- Arrow keys move cursor for text editing
-- Input validation (max 10k chars)
+**Language**: Primary language is Swedish (svenska). System prompts, TTS, and user-facing messages are in Swedish.
+
+## Architecture Overview
+
+```
+cli.py (entry point)
+  └── cli/app.py (CLIApp - main application)
+        ├── cli/state.py      StateManager (IDLE→THINKING→TALKING→ERROR)
+        ├── cli/raw_input.py  RawInputHandler (termios, escape sequences)
+        ├── cli/renderer.py   StreamingRenderer (typewriter effect)
+        ├── cli/avatar.py     MechaCoreAvatar (cyberpunk avatar)
+        ├── cli/waveform.py   Waveform animation
+        ├── cli/layout.py     Rich Layout composition
+        ├── cli/theme.py      Chimera theme (cyberpunk styling)
+        ├── brain.py          Ollama API wrapper (GPT-OSS model)
+        ├── speak.py          GoogleHomeSpeaker (Chromecast TTS)
+        └── config.py         Configuration management
+```
+
+### State Machine Flow
+
+```
+IDLE → THINKING → TALKING → IDLE
+         ↓          ↓
+       ERROR  ←  ERROR  → IDLE
+```
+
+- **IDLE**: Ready for user input
+- **THINKING**: Processing user query with Ollama
+- **TALKING**: Speaking response via Google Home
+- **ERROR**: Error state with auto-recovery (5 seconds)
+
+State transitions are enforced by `StateManager` in `cli/state.py`. Invalid transitions return False.
+
+## Key Components
+
+### Core Application (`cli/app.py`)
+
+- **CLIApp**: Main application class with async event loop
+- Uses Rich Live with `screen=True` for alternate buffer
+- Manages conversation history (deque with max size)
+- Handles state transitions and error recovery
+- Integrates brain and speaker via thread executors
+
+### Brain Integration (`brain.py`)
+
+- **ask_brain(prompt)**: Queries Ollama API at `http://localhost:11434/api/chat`
+- Uses GPT-OSS model (configurable via `OLLAMA_MODEL` env var, default: `gptoss-agent`)
+- System prompt configured for Swedish responses (max 2 sentences)
+- Raises `BrainConnectionError` or `BrainEmptyResponseError` on failure
+- **CRITICAL**: This is a blocking function - must use `run_in_executor`
+
+### Speaker Integration (`speak.py`)
+
+- **GoogleHomeSpeaker**: Manages Chromecast connection and TTS
+- Uses Google Translate TTS API (`tl=sv` for Swedish)
+- Device name configurable via `GOOGLE_HOME_DEVICE` env var (default: "Kontor")
+- Supports interrupt via `stop()` method
+- Raises `DeviceNotFoundError` if device not found
+- **CRITICAL**: This is a blocking function - must use `run_in_executor`
+
+### Input Handling (`cli/raw_input.py`)
+
+- **RawInputHandler**: Character-by-character input using `termios` in cbreak mode
+- Captures arrow keys for cursor movement and history navigation
+- Escape sequence parsing with `_escape_buffer` for incomplete sequences
+- Ctrl+C interrupts current state, second press exits
+- Maximum 10,000 character input buffer
+- Non-blocking reads using `select` to avoid conflicts with Rich Live
+
+### State Management (`cli/state.py`)
+
+- **StateManager**: Thread-safe state machine with RLock
+- Observer pattern for state change notifications
+- Tracks state history and duration
+- Provides UX-friendly messages and hints per state
+- Thread-safe property accessors
+
+### Configuration (`config.py`)
+
+- Loads from environment variables, `.env` file, or defaults
+- Priority: environment variables > `.env` file > defaults
+- Supports string, int, float, and bool types
+- Key settings: device name, Ollama URL/model, CLI FPS, logging
+
+## Development Patterns
+
+### Async + Threading Pattern
+
+**CRITICAL**: The main loop uses `asyncio`, but blocking I/O operations MUST use thread pools:
+
+```python
+# Brain queries run in executor
+response = await loop.run_in_executor(None, ask_brain, prompt)
+
+# TTS runs in executor
+await loop.run_in_executor(None, self.speaker.speak, text)
+```
+
+**Never call `speak()` or `ask_brain()` directly in the async loop** - they are blocking functions.
+
+### Rich Live Pattern
+
+- Use `screen=True` for alternate buffer (prevents terminal flicker)
+- Update UI in render loop, not on every event
+- Use `Live.update()` with Rich renderables
+- Always call `console.show_cursor()` on cleanup
+
+### Error Handling
+
+Custom exceptions provide targeted UX messages:
+- `BrainConnectionError`: Cannot connect to Ollama
+- `BrainEmptyResponseError`: Ollama returned empty response
+- `DeviceNotFoundError`: Google Home device not found
+
+Application automatically recovers from errors after 5 seconds (transitions ERROR → IDLE).
+
+### Input Event Handling
+
+- Use `RawInputHandler.get_event()` in main loop
+- Handle `InputEventType.CHAR` for real-time rendering
+- Handle `InputEventType.TEXT` for submission (Enter key)
+- Handle `InputEventType.INTERRUPT` for Ctrl+C
+- Handle `InputEventType.EXIT` for quit commands
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GOOGLE_HOME_DEVICE` | Google Home device name | `Kontor` |
+| `OLLAMA_URL` | Ollama API endpoint | `http://localhost:11434/api/chat` |
+| `OLLAMA_MODEL` | Ollama model name | `gptoss-agent` |
+| `CLI_FPS` | Frames per second for rendering | `20` |
+| `CLI_MAX_HISTORY` | Max conversation history entries | `50` |
+| `CLI_STREAM_TEXT` | Enable streaming text effect | `true` |
+| `CLI_BOOT_SEQUENCE` | Show boot sequence | `true` |
+| `LOG_LEVEL` | Logging level (DEBUG/INFO/WARNING/ERROR) | `INFO` |
+| `LOG_FILE` | Log file path | `core.log` |
+| `LOG_MAX_BYTES` | Max log file size before rotation | `10485760` (10MB) |
+| `LOG_BACKUP_COUNT` | Number of backup log files | `5` |
+
+### Using .env File
+
+1. Create `.env` file in project root
+2. Add variables: `GOOGLE_HOME_DEVICE=Sovrum`
+3. `python-dotenv` package required (optional dependency)
 
 ## Code Style
-- Google Python Style Guide
-- 80 char line limit
-- Type hints encouraged
-- snake_case for functions, PascalCase for classes
-- All public functions need docstrings
+
+Follow **Google Python Style Guide**:
+
+- **80 character line limit**
+- **4-space indentation** (no tabs)
+- **Type hints** on all public functions
+- **Docstrings** on all public functions (Google style)
+- **snake_case** for functions and variables
+- **PascalCase** for classes
+- **UPPER_CASE** for constants
+
+### Example Function Signature
+
+```python
+def process_input(text: str) -> Optional[str]:
+    """Process user input and return response.
+    
+    Args:
+        text: User input text to process.
+    
+    Returns:
+        Processed response or None if invalid.
+    """
+    ...
+```
 
 ## Testing
-- Use pytest
-- Target >80% coverage
-- Test files in `tests/` directory
-- Run `pytest tests/test_avatar.py` for specific tests
 
-## Performance
-- Use `deque` for history (already implemented)
-- Cache cursor string slices (already implemented)
-- Limit input events per frame (already implemented)
-- Avoid `list()` conversions in hot paths
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_avatar.py
+pytest tests/test_raw_input.py
+pytest tests/test_state.py
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+```
+
+### Test Structure
+
+- Tests in `tests/` directory
+- Test files mirror source structure: `test_<module>.py`
+- Use pytest fixtures for common setup
+- Mock external dependencies (Ollama, Chromecast)
+
+### Key Test Files
+
+- `test_avatar.py`: Avatar rendering and animation
+- `test_raw_input.py`: Input handling and escape sequences
+- `test_state.py`: State machine transitions
+- `test_layout.py`: Rich layout composition
+- `test_waveform.py`: Waveform animation
+- `test_threading.py`: Thread safety
 
 ## Common Issues
-- Escape sequences: Use non-blocking reads, state tracking in `_escape_buffer`
-- Terminal cleanup: Always call `input_handler.stop()` and `console.show_cursor()`
-- Rich Live: Use `screen=True` for alternate buffer
-- Async: Use `run_in_executor` for blocking calls (speak, ask_brain)
 
-## Workflow
-- Follow Conductor methodology in `conductor/tracks/`
-- Use CJG workflow (Conductor + Jules + Gemini) for complex features
-- Mark tasks `[~]` (in progress) → `[x]` (complete)
+### Google Home Device Not Found
+
+1. Ensure device is powered on and connected to same network
+2. Check device name matches `GOOGLE_HOME_DEVICE` setting
+3. Verify device appears in Google Home app
+4. Try restarting the device
+5. Check `pychromecast` can discover devices: `python -c "import pychromecast; print(pychromecast.get_chromecasts())"`
+
+### Ollama Connection Errors
+
+1. Verify Ollama is running: `curl http://localhost:11434/api/tags`
+2. Check model is available: `ollama list`
+3. Ensure `OLLAMA_URL` matches your Ollama setup
+4. Verify model name matches: `ollama show gptoss-agent`
+
+### Terminal Display Issues
+
+1. Ensure terminal supports Unicode and colors
+2. Try increasing terminal size
+3. Check `CLI_FPS` setting (lower values may help on slow systems)
+4. Verify Rich is installed: `pip install rich`
+
+### Input Handling Issues
+
+1. Escape sequences: Use non-blocking reads, state tracking in `_escape_buffer`
+2. Terminal cleanup: Always call `input_handler.stop()` and `console.show_cursor()`
+3. Rich Live conflicts: Use `screen=True` for alternate buffer
+
+### Async/Threading Issues
+
+1. **Never call blocking functions directly** - always use `run_in_executor`
+2. State transitions must be thread-safe (use StateManager)
+3. Speaker and brain operations block - use executors
+4. Check for proper cleanup on exit
+
+## Key Commands
+
+```bash
+# Run the CLI interface
+python cli.py
+python -m cli.app
+
+# Test TTS directly
+python speak.py "Hej, detta är ett test."
+
+# Test AI brain directly
+python brain.py
+
+# Run tests
+pytest
+pytest --cov=. --cov-report=html
+```
+
+## Technology Stack
+
+- **Python**: 3.14 (type hints, dataclasses, asyncio)
+- **Ollama**: Local LLM server (GPT-OSS model)
+- **pychromecast**: Google Home/Chromecast integration
+- **Rich**: Terminal UI framework (Live, Layout, Text)
+- **psutil**: System monitoring (CPU, RAM, network)
+- **requests**: HTTP client for Ollama API
+- **pytest**: Testing framework
+
+## Important Notes for New Agents
+
+1. **Voice-First Design**: The system is designed for voice output. Always consider TTS when designing responses (keep concise, Swedish).
+
+2. **State Machine**: All operations must respect state transitions. Check state before operations, handle transitions properly.
+
+3. **Blocking I/O**: Both `ask_brain()` and `speak()` are blocking. Always use `run_in_executor` in async contexts.
+
+4. **Swedish Language**: System prompts, TTS, and user messages are in Swedish. Maintain Swedish language support.
+
+5. **Error Recovery**: Errors auto-recover after 5 seconds. Don't implement manual recovery unless necessary.
+
+6. **Input Buffer**: Maximum 10,000 characters. Validate input length.
+
+7. **Terminal Cleanup**: Always restore terminal state on exit (cursor, termios settings).
+
+8. **Rich Live**: Use alternate buffer (`screen=True`) to prevent terminal conflicts.
+
+9. **Thread Safety**: StateManager uses RLock. Access state via properties, not direct attribute access.
+
+10. **Configuration**: Prefer environment variables over hardcoded values. Use `config.py` functions.
+
+## Project Goals
+
+This project enables "hacking" Google Nest Hub and Google Minis to:
+- Integrate local AI (GPT-OSS via Ollama) with Google Home devices
+- Create voice-activated AI assistant capabilities
+- Develop custom voice-first interfaces
+- Experiment with Chromecast TTS integration
+- Build cyberpunk-themed terminal interfaces

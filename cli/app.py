@@ -9,23 +9,22 @@ Features Mecha-Core Unit 734 and Digital Noise simulation.
 
 import asyncio
 import time
-import sys
 import logging
+import logging.handlers
 import random
 import psutil
 from collections import deque
-from typing import Optional, List
+from typing import Optional
 from dataclasses import dataclass, field
 
 from rich.console import Console, Group
 from rich.live import Live
 from rich.text import Text
 from rich.align import Align
-from rich.padding import Padding
-from rich.markdown import Markdown
 
 # Local imports
-from cli.state import StateManager, AppState, get_state_manager
+import config
+from cli.state import AppState, get_state_manager
 from cli.theme import CHIMERA_THEME # Project Chimera Theme
 from cli.avatar import MechaCoreAvatar
 from cli.layout import (
@@ -36,7 +35,7 @@ from cli.layout import (
     make_log_panel,
     make_dummy_panel,
 )
-from cli.raw_input import RawInputHandler, InputEvent, InputEventType
+from cli.raw_input import RawInputHandler, InputEventType
 from cli.renderer import StreamingRenderer
 
 
@@ -65,12 +64,25 @@ except ImportError:
 @dataclass
 class AppConfig:
     """Application configuration."""
-    fps: int = 20
-    model_name: str = "Tesseract v4.0"
+    fps: int = None
+    model_name: str = None
     output_device: str = "Google Home"
-    max_history: int = 50
-    stream_text: bool = True
-    boot_sequence: bool = True
+    max_history: int = None
+    stream_text: bool = None
+    boot_sequence: bool = None
+    
+    def __post_init__(self):
+        """Initialize defaults from config if not provided."""
+        if self.fps is None:
+            self.fps = config.get_fps()
+        if self.model_name is None:
+            self.model_name = config.get_model_name()
+        if self.max_history is None:
+            self.max_history = config.get_max_history()
+        if self.stream_text is None:
+            self.stream_text = config.get_stream_text()
+        if self.boot_sequence is None:
+            self.boot_sequence = config.get_boot_sequence()
 
 
 # --- Conversation History ---
@@ -99,13 +111,14 @@ class CLIApp:
         # Use Chimera theme
         self.console = Console(theme=CHIMERA_THEME, force_terminal=True)
         
-        logging.basicConfig(
-            filename="core.log",
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            filemode='a'
-        )
+        # Setup structured logging with rotation
+        self._setup_logging()
         self.logger = logging.getLogger(__name__)
+        self.logger.info("CLIApp initialized", extra={
+            "state": "INIT",
+            "fps": self.config.fps,
+            "model": self.config.model_name
+        })
 
         # Core components
         self.state = get_state_manager()
@@ -135,6 +148,55 @@ class CLIApp:
         self._last_net_time = time.time()
         self._net_sent_speed = 0.0
         self._net_recv_speed = 0.0
+
+    def _setup_logging(self) -> None:
+        """Setup structured logging with rotation.
+        
+        Configures logging with:
+        - Rotating file handler (prevents log files from growing too large)
+        - Configurable log level from config
+        - Structured format with context
+        """
+        log_level = getattr(logging, config.get_log_level(), logging.INFO)
+        log_file = config.get_log_file()
+        max_bytes = config.get_log_max_bytes()
+        backup_count = config.get_log_backup_count()
+        
+        # Create custom formatter that handles optional state field
+        class StateFormatter(logging.Formatter):
+            def format(self, record):
+                state = getattr(record, 'state', 'N/A')
+                record.state = state
+                return super().format(record)
+        
+        formatter = StateFormatter(
+            '%(asctime)s - %(name)s - %(levelname)s - [%(state)s] - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        
+        # Create rotating file handler
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_file,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
+            encoding='utf-8'
+        )
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(formatter)
+        
+        # Create console handler (for development)
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.WARNING)  # Only warnings/errors to console
+        console_handler.setFormatter(formatter)
+        
+        # Configure root logger
+        root_logger = logging.getLogger()
+        root_logger.setLevel(log_level)
+        root_logger.addHandler(file_handler)
+        root_logger.addHandler(console_handler)
+        
+        # Prevent duplicate logs
+        root_logger.propagate = False
 
     def run(self) -> None:
         """Main application entry point."""
@@ -254,16 +316,31 @@ class CLIApp:
 
     async def _handle_user_input(self, text: str) -> None:
         self.history.append(Message(role='user', content=text))
+        self.logger.info("User input received", extra={
+            "state": "THINKING",
+            "input_length": len(text)
+        })
         self.state.transition_to(AppState.THINKING)
         asyncio.create_task(self._brain_worker(text))
 
     async def _brain_worker(self, prompt: str) -> None:
         try:
+            self.logger.debug("Querying brain", extra={
+                "state": "THINKING",
+                "prompt_length": len(prompt)
+            })
             loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(None, ask_brain, prompt)
+            self.logger.info("Brain response received", extra={
+                "state": "THINKING",
+                "response_length": len(response)
+            })
             await self.response_queue.put(response)
         except Exception as e:
-            self.logger.error(f"Brain worker failed: {e}", exc_info=True)
+            self.logger.error("Brain worker failed", extra={
+                "state": "ERROR",
+                "error": str(e)
+            }, exc_info=True)
             self.state.set_error(str(e))
 
     async def _process_responses(self) -> None:
@@ -273,6 +350,11 @@ class CLIApp:
             return
 
         self.history.append(Message(role='ai', content=response))
+        
+        self.logger.info("Starting TTS", extra={
+            "state": "TALKING",
+            "text_length": len(response)
+        })
         
         if self.config.stream_text:
             self.renderer.start_stream(response)
@@ -287,12 +369,17 @@ class CLIApp:
                 await loop.run_in_executor(None, self.speaker.speak, text)
             else:
                 await loop.run_in_executor(None, speak, text)
+            self.logger.info("TTS completed", extra={"state": "TALKING"})
         except Exception as e:
-             self.logger.error(f"Audio error: {e}", exc_info=True)
+            self.logger.error("Audio error", extra={
+                "state": "ERROR",
+                "error": str(e)
+            }, exc_info=True)
         finally:
             while not self.renderer.is_complete:
                 await asyncio.sleep(0.1)
             self.state.force_state(AppState.IDLE)
+            self.logger.debug("Returned to IDLE", extra={"state": "IDLE"})
 
     def _update_layout(self) -> None:
         state_name = self.state.state_name
@@ -386,20 +473,20 @@ class CLIApp:
         visible_history = list(self.history)[-6:] # Show fewer lines, larger text usually
         
         for msg in visible_history:
-             if msg.role == 'user':
+            if msg.role == 'user':
                 text = Text()
                 text.append(">> ", style="dim")
                 text.append(msg.content, style="user_input")
                 elements.append(text)
                 elements.append(Text(" ")) 
                 
-             elif msg.role == 'ai':
+            elif msg.role == 'ai':
                 content = msg.content
                 
                 is_last = msg is self.history[-1] if self.history else False
                 if is_last and self.renderer.is_streaming:
-                     content = self.renderer.current_text
-                     content += "█" 
+                    content = self.renderer.current_text
+                    content += "█" 
 
                 # Apply Chromatic Aberration Simulation
                 # Since we can't do pixel shift, we randomly color chars Cyan/Red
@@ -444,13 +531,6 @@ def run_cli() -> None:
     app = CLIApp()
     app.run()
 
-if __name__ == "__main__":
-    run_cli()
-
-# --- Backward Compatibility ---
-def run_cli() -> None:
-    app = CLIApp()
-    app.run()
 
 if __name__ == "__main__":
     run_cli()

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>SERVERKONTROLL</title>
+
+    <link rel="stylesheet" href="/static/deep-void.css" />
+  </head>
+  <body>
+    <div class="hud">
+      <header class="hud__header">
+        <div class="hud__brand">
+          <div class="hud__brandTitle">SERVERKONTROLL</div>
+        </div>
+
+        <div class="hud__status">
+          <div class="pill">
+            <div class="pill__k">VÄRD</div>
+            <div class="pill__v" id="hostValue">—</div>
+          </div>
+          <div class="pill">
+            <div class="pill__k">CPU</div>
+            <div class="pill__v" id="cpuValue">—</div>
+          </div>
+          <div class="pill">
+            <div class="pill__k">RAM</div>
+            <div class="pill__v" id="ramValue">—</div>
+          </div>
+          <div class="pill">
+            <div class="pill__k">MODELL</div>
+            <div class="pill__v" id="modelValue">—</div>
+          </div>
+          <div class="pill">
+            <div class="pill__k">TEMP</div>
+            <div class="pill__v" id="tempValue">—</div>
+          </div>
+          <div class="pill pill--dim">
+            <div class="pill__k">SYNK</div>
+            <div class="pill__v" id="syncValue">—</div>
+          </div>
+        </div>
+      </header>
+
+      <main class="hud__main">
+        <div class="grid grid--diag" id="actionsGrid" aria-label="Makro-kommandon">
+          <button class="diagBtn" type="button" data-action="restart_ollama">
+            <div class="diagBtn__title">Starta om Ollama</div>
+            <div class="diagBtn__desc">systemctl/service restart</div>
+          </button>
+          <button class="diagBtn" type="button" data-action="clear_cache">
+            <div class="diagBtn__title">Rensa cache</div>
+            <div class="diagBtn__desc">Stoppar laddade modeller (VRAM)</div>
+          </button>
+          <button
+            class="diagBtn diagBtn--danger"
+            type="button"
+            data-action="stop_heavy_processes"
+            data-dangerous="1"
+          >
+            <div class="diagBtn__title">Stoppa tunga processer</div>
+            <div class="diagBtn__desc">SIGTERM till kända dev-processer</div>
+          </button>
+          <button class="diagBtn" type="button" data-action="switch_model">
+            <div class="diagBtn__title">Byt modell</div>
+            <div class="diagBtn__desc">Växlar OLLAMA_MODEL</div>
+          </button>
+          <button class="diagBtn" type="button" data-action="lower_temperature">
+            <div class="diagBtn__title">Sänk temperatur</div>
+            <div class="diagBtn__desc">-0.1 per tryck (min 0.0)</div>
+          </button>
+          <button
+            class="diagBtn diagBtn--danger"
+            type="button"
+            data-action="reboot_server"
+            data-dangerous="1"
+          >
+            <div class="diagBtn__title">Reboot server</div>
+            <div class="diagBtn__desc">Kräver bekräftelse</div>
+          </button>
+        </div>
+
+        <div class="console">
+          <div class="console__title">SYSTEM LOGG</div>
+          <div class="console__lines" id="logLines"></div>
+        </div>
+      </main>
+
+      <footer class="hud__footer">
+        <div class="footer__left">
+          <span class="dot dot--ok"></span>
+          <span id="apiState">API: —</span>
+        </div>
+        <div class="footer__right">
+          <span class="dim">Tryck på makroknappar. Bekräfta farliga åtgärder.</span>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Optional on-screen input debug (enable with ?debug=1) -->
+    <div class="inputDebug inputDebug--hidden" id="inputDebug" aria-hidden="true"></div>
+
+    <script src="/static/dashboard.js"></script>
+  </body>
+</html>
